@@ -1,0 +1,11 @@
+CREATE INDEX idx_pais_nombre ON PAIS(nombre);
+CREATE INDEX idx_ciudad_nombre ON CIUDAD(nombre);
+CREATE INDEX idx_institucion_nombre ON INSTITUCION(nombre);
+CREATE INDEX idx_idioma_nombre ON IDIOMA(nombre);
+CREATE INDEX idx_club_nombre ON CLUB_LECTURA(nombre);
+CREATE INDEX idx_autor_apellido ON AUTOR(primer_apellido);
+CREATE INDEX idx_libro_titulo ON LIBRO(titulo_original);
+CREATE INDEX idx_obra_nombre ON OBRA_ACTUADA(nombre);
+CREATE INDEX idx_miembro_doc ON MIEMBRO(doc_identidad);
+CREATE INDEX idx_miembro_email ON MIEMBRO(email);
+CREATE INDEX idx_repres_doc ON REPRESENTANTE(doc_identidad);
