@@ -1,0 +1,1846 @@
+PROYECTO: CLUB DE LECTURA GRUPO 9 SECCION 25758
+
+-- ============================================================
+-- SECUENCIAS
+-- ============================================================
+CREATE SEQUENCE JPS_seq_pais          START WITH 1 INCREMENT BY 1 NOCYCLE;
+CREATE SEQUENCE JPS_seq_ciudad        START WITH 1 INCREMENT BY 1 NOCYCLE;
+CREATE SEQUENCE JPS_seq_institucion   START WITH 1 INCREMENT BY 1 NOCYCLE;
+CREATE SEQUENCE JPS_seq_idioma        START WITH 1 INCREMENT BY 1 NOCYCLE;
+CREATE SEQUENCE JPS_seq_autor         START WITH 1 INCREMENT BY 1 NOCYCLE;
+CREATE SEQUENCE JPS_seq_representante START WITH 1 INCREMENT BY 1 NOCYCLE;
+CREATE SEQUENCE JPS_seq_miembro       START WITH 1 INCREMENT BY 1 NOCYCLE;
+CREATE SEQUENCE JPS_seq_club_lectura  START WITH 1 INCREMENT BY 1 NOCYCLE;
+CREATE SEQUENCE JPS_seq_grupo_lectura START WITH 1 INCREMENT BY 1 NOCYCLE;
+
+
+
+-- ============================================================
+-- TABLAS (Creates)
+-- Orden: de menor a mayor dependencia (sin FK hacia adelante)
+-- ============================================================
+
+-- 1. PAIS
+CREATE TABLE JPS_PAIS (
+    idPais       NUMBER(3)    PRIMARY KEY NOT NULL,
+    nombre       VARCHAR2(50) NOT NULL,
+    continente   VARCHAR2(30) NOT NULL,
+    moneda       VARCHAR2(30) NOT NULL,
+    nacionalidad VARCHAR2(50) NOT NULL
+);
+
+-- 2. CIUDAD
+CREATE TABLE JPS_CIUDAD (
+    idCiudad NUMBER(4)    PRIMARY KEY NOT NULL,
+    idPais   NUMBER(3)    NOT NULL,
+    nombre   VARCHAR2(50) NOT NULL,
+    CONSTRAINT FK_JPS_CIUDAD_PAIS FOREIGN KEY (idPais) REFERENCES JPS_PAIS(idPais)
+);
+
+-- 3. INSTITUCION
+CREATE TABLE JPS_INSTITUCION (
+    idInstitucion NUMBER(4)     PRIMARY KEY NOT NULL,
+    nombre        VARCHAR2(100) NOT NULL,
+    tipo          VARCHAR2(20)  NOT NULL,
+    CONSTRAINT CHECK_JPS_TIPO_INST CHECK (tipo IN ('biblioteca','universidad','colegio','otro'))
+);
+
+-- 4. LIBRO
+CREATE TABLE JPS_LIBRO (
+    ISBN                          VARCHAR2(20)  PRIMARY KEY NOT NULL,
+    titulo_original               VARCHAR2(100) NOT NULL,
+    anio_publicacion_1era_edicion NUMBER(4)     NOT NULL,
+    sinopsis                      VARCHAR2(500) NOT NULL,
+    cantidad_paginas              NUMBER(4)     NOT NULL,
+    tipo_narrativa                VARCHAR2(20)  NOT NULL,
+    resumen_tema                  VARCHAR2(500) NOT NULL,
+    CONSTRAINT CHECK_JPS_NARRATIVA CHECK (tipo_narrativa IN ('novela','cuento','leyenda','fabula','epopeya','mito'))
+);
+
+-- 5. AUTOR
+CREATE TABLE JPS_AUTOR (
+    idAutor              NUMBER(6) PRIMARY KEY NOT NULL,
+    primer_nombre        VARCHAR2(30),
+    primer_apellido      VARCHAR2(30),
+    segundo_apellido     VARCHAR2(30),
+    nombre_ant_seudonimo VARCHAR2(50),
+    segundo_nombre       VARCHAR2(30)
+);
+
+-- 6. L_A  (relación M:N entre Libro y Autor)
+CREATE TABLE JPS_L_A (
+    ISBN    VARCHAR2(20) NOT NULL,
+    idAutor NUMBER(6)    NOT NULL,
+    CONSTRAINT PK_JPS_L_A   PRIMARY KEY (ISBN, idAutor),
+    CONSTRAINT FK_JPS_LA_LIBRO FOREIGN KEY (ISBN)    REFERENCES JPS_LIBRO(ISBN),
+    CONSTRAINT FK_JPS_LA_AUTOR FOREIGN KEY (idAutor) REFERENCES JPS_AUTOR(idAutor)
+);
+
+-- 7. IDIOMA
+CREATE TABLE JPS_IDIOMA (
+    idIdioma NUMBER(3)    PRIMARY KEY NOT NULL,
+    nombre   VARCHAR2(30) NOT NULL
+);
+
+-- 8. REPRESENTANTE
+CREATE TABLE JPS_REPRESENTANTE (
+    idRepresentante  NUMBER(6)    PRIMARY KEY NOT NULL,
+    doc_identidad    VARCHAR2(15) NOT NULL,
+    primer_nombre    VARCHAR2(30) NOT NULL,
+    primer_apellido  VARCHAR2(30) NOT NULL,
+    segundo_apellido VARCHAR2(30) NOT NULL,
+    segundo_nombre   VARCHAR2(30),
+    fecha_nacimiento DATE,
+    telefono         VARCHAR2(15),
+    email            VARCHAR2(50)
+);
+
+-- 9. MIEMBRO
+CREATE TABLE JPS_MIEMBRO (
+    idMiembro              NUMBER(6)    PRIMARY KEY NOT NULL,
+    idPais_nacio           NUMBER(3)    NOT NULL,
+    doc_identidad          VARCHAR2(15) NOT NULL,
+    primer_nombre          VARCHAR2(30) NOT NULL,
+    primer_apellido        VARCHAR2(30) NOT NULL,
+    segundo_apellido       VARCHAR2(30) NOT NULL,
+    fecha_nacimiento       DATE         NOT NULL,
+    telefono               VARCHAR2(15) NOT NULL,
+    email                  VARCHAR2(50) NOT NULL,
+    idRepresentante        NUMBER(6),
+    idMiembro_representado NUMBER(6),
+    segundo_nombre         VARCHAR2(30),
+    CONSTRAINT FK_JPS_MIEMBRO_PAIS       FOREIGN KEY (idPais_nacio)          REFERENCES JPS_PAIS(idPais),
+    CONSTRAINT FK_JPS_MIEMBRO_REP        FOREIGN KEY (idRepresentante)       REFERENCES JPS_REPRESENTANTE(idRepresentante),
+    CONSTRAINT FK_JPS_MIEMBRO_REPR       FOREIGN KEY (idMiembro_representado) REFERENCES JPS_MIEMBRO(idMiembro),
+    CONSTRAINT CHECK_JPS_REPRESENTADO    CHECK (
+        (idRepresentante IS NULL AND idMiembro_representado IS NULL) OR
+        (idRepresentante IS NOT NULL AND idMiembro_representado IS NOT NULL)
+    )
+);
+
+
+-- 10. PREFERENCIA  (relación M:N entre Miembro y Libro)
+CREATE TABLE JPS_PREFERENCIA (
+    idMiembro         NUMBER(6)    NOT NULL,
+    ISBN              VARCHAR2(20) NOT NULL,
+    orden_preferencia NUMBER(1)    NOT NULL,
+    CONSTRAINT PK_JPS_PREFERENCIA  PRIMARY KEY (idMiembro, ISBN, orden_preferencia),
+    CONSTRAINT FK_JPS_PREF_MIEMBRO FOREIGN KEY (idMiembro) REFERENCES JPS_MIEMBRO(idMiembro),
+    CONSTRAINT FK_JPS_PREF_LIBRO   FOREIGN KEY (ISBN)      REFERENCES JPS_LIBRO(ISBN)
+);
+
+-- 11. CLUB_LECTURA
+CREATE TABLE JPS_CLUB_LECTURA (
+    idClub          NUMBER(4)     PRIMARY KEY NOT NULL,
+    idCiudad        NUMBER(4)     NOT NULL,
+    nombre          VARCHAR2(100) NOT NULL,
+    calle_av        VARCHAR2(100) NOT NULL,
+    telefono        VARCHAR2(15)  NOT NULL,
+    email           VARCHAR2(50)  NOT NULL,
+    codigo_postal   VARCHAR2(10)  NOT NULL,
+    cuota_membresia VARCHAR2(2),
+    idInstitucion   NUMBER(4),
+    CONSTRAINT FK_JPS_CLUB_CIUDAD      FOREIGN KEY (idCiudad)      REFERENCES JPS_CIUDAD(idCiudad),
+    CONSTRAINT FK_JPS_CLUB_INSTITUCION FOREIGN KEY (idInstitucion) REFERENCES JPS_INSTITUCION(idInstitucion),
+    CONSTRAINT CHECK_JPS_CUOTA         CHECK (cuota_membresia IN ('si','no'))
+);
+
+--12. I_M
+CREATE TABLE JPS_I_M (
+    idI_M     NUMBER(6)  NOT NULL,   -- ID propio
+    idIdioma  NUMBER(3)  NOT NULL,   -- viene de IDIOMA
+    idMiembro NUMBER(6),             -- FK normal, opcional (arco exclusivo)
+    idClub    NUMBER(4),             -- FK normal, opcional (arco exclusivo)
+    CONSTRAINT PK_JPS_I_M        PRIMARY KEY (idI_M, idIdioma),
+    CONSTRAINT FK_JPS_IM_IDIOMA  FOREIGN KEY (idIdioma)  REFERENCES JPS_IDIOMA(idIdioma),
+    CONSTRAINT FK_JPS_IM_MIEMBRO FOREIGN KEY (idMiembro) REFERENCES JPS_MIEMBRO(idMiembro),
+    CONSTRAINT FK_JPS_IM_CLUB    FOREIGN KEY (idClub)    REFERENCES JPS_CLUB_LECTURA(idClub),
+    CONSTRAINT CHECK_JPS_IM_ARCO CHECK (
+        (idMiembro IS NOT NULL AND idClub IS NULL) OR
+        (idMiembro IS NULL AND idClub IS NOT NULL)
+    )
+);
+
+
+-- 13. ASOCIADO
+CREATE TABLE JPS_ASOCIADO (
+    idClub1 NUMBER(4) NOT NULL,
+    idClub2 NUMBER(4) NOT NULL,
+    CONSTRAINT PK_JPS_CLUB_ASOCIADO PRIMARY KEY (idClub1, idClub2),
+    CONSTRAINT FK_JPS_ASOC_CLUB1    FOREIGN KEY (idClub1) REFERENCES JPS_CLUB_LECTURA(idClub),
+    CONSTRAINT FK_JPS_ASOC_CLUB2    FOREIGN KEY (idClub2) REFERENCES JPS_CLUB_LECTURA(idClub)
+);
+
+-- 14. GRUPO_LECTURA
+--     PK compuesta: idGrupo + idClub
+CREATE TABLE JPS_GRUPO_LECTURA (
+    idGrupo        NUMBER(4)    NOT NULL,
+    idClub         NUMBER(4)    NOT NULL,
+    tipo           VARCHAR2(10) NOT NULL,
+    fecha_creacion DATE         NOT NULL,
+    dia_reunion    VARCHAR2(15) NOT NULL,
+    hora_i         VARCHAR2(5)  NOT NULL,
+    CONSTRAINT PK_JPS_GRUPO_LECTURA PRIMARY KEY (idGrupo, idClub),
+    CONSTRAINT FK_JPS_GRUPO_CLUB    FOREIGN KEY (idClub) REFERENCES JPS_CLUB_LECTURA(idClub),
+    CONSTRAINT CHECK_JPS_TIPO_GRUPO CHECK (tipo IN ('adulto','joven','niño'))
+);
+
+-- 15. OBRA_ACTUADA
+--     PK compuesta: idObra + ISBN (LIBRO) + idClub (CLUB_LECTURA)
+--     costo_entrada y activo son opcionales
+CREATE TABLE JPS_OBRA_ACTUADA (
+    idObra        NUMBER(6)     NOT NULL,
+    ISBN          VARCHAR2(20)  NOT NULL,
+    idClub        NUMBER(4)     NOT NULL,
+    nombre        VARCHAR2(100) NOT NULL,
+    descripcion   VARCHAR2(500) NOT NULL,
+    costo_entrada NUMBER(10,2),
+    activo        VARCHAR2(2),
+    CONSTRAINT PK_JPS_OBRA_ACTUADA PRIMARY KEY (idObra, ISBN, idClub),
+    CONSTRAINT FK_JPS_OBRA_LIBRO   FOREIGN KEY (ISBN)   REFERENCES JPS_LIBRO(ISBN),
+    CONSTRAINT FK_JPS_OBRA_CLUB    FOREIGN KEY (idClub) REFERENCES JPS_CLUB_LECTURA(idClub),
+    CONSTRAINT CHECK_JPS_ACTIVO    CHECK (activo IN ('si','no'))
+);
+
+-- 16. ELENCO
+--     FK a OBRA_ACTUADA requiere las 3 columnas de su PK
+CREATE TABLE JPS_ELENCO (
+    idMiembro NUMBER(6)    NOT NULL,
+    idObra    NUMBER(6)    NOT NULL,
+    ISBN      VARCHAR2(20) NOT NULL,
+    idClub    NUMBER(4)    NOT NULL,
+    CONSTRAINT PK_JPS_ELENCO         PRIMARY KEY (idMiembro, idObra, ISBN, idClub),
+    CONSTRAINT FK_JPS_ELENCO_MIEMBRO  FOREIGN KEY (idMiembro)          REFERENCES JPS_MIEMBRO(idMiembro),
+    CONSTRAINT FK_JPS_ELENCO_OBRA     FOREIGN KEY (idObra, ISBN, idClub) REFERENCES JPS_OBRA_ACTUADA(idObra, ISBN, idClub)
+);
+
+-- 17. HISTORICO_MEMBRESIA
+--     fecha_fin y motivo_deuda son opcionales
+CREATE TABLE JPS_HISTORICO_MEMBRESIA (
+    fecha_inicio DATE         NOT NULL,
+    idMiembro    NUMBER(6)    NOT NULL,
+    idClub       NUMBER(4)    NOT NULL,
+    estatus      VARCHAR2(10) NOT NULL,
+    fecha_fin    DATE,
+    motivo_deuda VARCHAR2(15),
+    CONSTRAINT PK_JPS_HISTORICO  PRIMARY KEY (fecha_inicio, idMiembro, idClub),
+    CONSTRAINT FK_JPS_HM_MIEMBRO FOREIGN KEY (idMiembro) REFERENCES JPS_MIEMBRO(idMiembro),
+    CONSTRAINT FK_JPS_HM_CLUB    FOREIGN KEY (idClub)    REFERENCES JPS_CLUB_LECTURA(idClub),
+    CONSTRAINT CHECK_JPS_ESTATUS CHECK (estatus IN ('activo','inactivo')),
+    CONSTRAINT CHECK_JPS_MOTIVO  CHECK (motivo_deuda IN ('voluntario','deudas','Inasistencia','otro'))
+);
+
+-- 18. MEMBRESIA_PAGO
+--     PK compuesta hereda de HISTORICO_MEMBRESIA
+CREATE TABLE JPS_MEMBRESIA_PAGO (
+    idPago       NUMBER(6) NOT NULL,
+    fecha_inicio DATE      NOT NULL,
+    idMiembro    NUMBER(6) NOT NULL,
+    idClub       NUMBER(4) NOT NULL,
+    fecha_pago   DATE      NOT NULL,
+    CONSTRAINT PK_JPS_PAGO    PRIMARY KEY (idPago, fecha_inicio, idMiembro, idClub),
+    CONSTRAINT FK_JPS_PAGO_HM FOREIGN KEY (fecha_inicio, idMiembro, idClub)
+        REFERENCES JPS_HISTORICO_MEMBRESIA(fecha_inicio, idMiembro, idClub)
+);
+
+-- 19. G_LC  (modera reuniones: qué miembro modera qué grupo)
+CREATE TABLE JPS_G_LC (
+    fecha_inicio DATE      NOT NULL,
+    idMiembro    NUMBER(6) NOT NULL,
+    idClub       NUMBER(4) NOT NULL,
+    idGrupo      NUMBER(4) NOT NULL,
+    fecha_fin    DATE,
+    CONSTRAINT PK_JPS_G_LC    PRIMARY KEY (fecha_inicio, idMiembro, idClub, idGrupo),
+    CONSTRAINT FK_JPS_GLC_HM  FOREIGN KEY (fecha_inicio, idMiembro, idClub)
+        REFERENCES JPS_HISTORICO_MEMBRESIA(fecha_inicio, idMiembro, idClub),
+    CONSTRAINT FK_JPS_GLC_GRUPO FOREIGN KEY (idGrupo, idClub)
+        REFERENCES JPS_GRUPO_LECTURA(idGrupo, idClub)
+);
+
+-- 20. CALENDARIO_MES_REUNION
+CREATE TABLE JPS_CALENDARIO_MES_REUNION (
+    fecha        DATE         NOT NULL,
+    idClub       NUMBER(4)    NOT NULL,
+    idGrupo      NUMBER(4)    NOT NULL,
+    ISBN         VARCHAR2(20) NOT NULL,
+    fecha_inicio DATE         NOT NULL,   -- FK a G_LC (moderador)
+    idMiembro    NUMBER(6)    NOT NULL,   -- FK a G_LC (moderador)
+    realizada    VARCHAR2(2)  NOT NULL,
+    conclusiones     VARCHAR2(500),
+    ultima_discusion VARCHAR2(500),
+    valoracion_final NUMBER(1),
+    CONSTRAINT PK_JPS_CALENDARIO      PRIMARY KEY (fecha, idGrupo, idClub, ISBN),
+    CONSTRAINT FK_JPS_CAL_GRUPO       FOREIGN KEY (idGrupo, idClub)
+        REFERENCES JPS_GRUPO_LECTURA(idGrupo, idClub),
+    CONSTRAINT FK_JPS_CAL_LIBRO       FOREIGN KEY (ISBN)
+        REFERENCES JPS_LIBRO(ISBN),
+    CONSTRAINT FK_JPS_CAL_GLC         FOREIGN KEY (fecha_inicio, idMiembro, idClub, idGrupo)
+        REFERENCES JPS_G_LC(fecha_inicio, idMiembro, idClub, idGrupo),
+    CONSTRAINT CHECK_JPS_REALIZADA    CHECK (realizada IN ('si','no')),
+    CONSTRAINT CHECK_JPS_VALORACION   CHECK (valoracion_final BETWEEN 1 AND 5)
+);
+
+-- 21. INASISTENCIA
+CREATE TABLE JPS_INASISTENCIA (
+    fecha        DATE         NOT NULL,
+    idClub       NUMBER(4)    NOT NULL,
+    idGrupo      NUMBER(4)    NOT NULL,
+    ISBN         VARCHAR2(20) NOT NULL,
+    fecha_inicio DATE         NOT NULL,
+    idMiembro    NUMBER(6)    NOT NULL,
+    estatus      VARCHAR2(15) NOT NULL,
+    CONSTRAINT PK_JPS_INASISTENCIA    PRIMARY KEY (fecha, idGrupo, idClub, ISBN, fecha_inicio, idMiembro),
+    CONSTRAINT FK_JPS_INAS_CALENDARIO FOREIGN KEY (fecha, idGrupo, idClub, ISBN)
+        REFERENCES JPS_CALENDARIO_MES_REUNION(fecha, idGrupo, idClub, ISBN),
+    CONSTRAINT FK_JPS_INAS_GLC        FOREIGN KEY (fecha_inicio, idMiembro, idClub, idGrupo)
+        REFERENCES JPS_G_LC(fecha_inicio, idMiembro, idClub, idGrupo)
+);
+
+
+
+-- 22. PRESENTACION
+CREATE TABLE JPS_PRESENTACION (
+    fecha_presentacion  DATE         NOT NULL,
+    idObra              NUMBER(6)    NOT NULL,
+    ISBN                VARCHAR2(20) NOT NULL,
+    idClub              NUMBER(4)    NOT NULL,
+    cantidad_asistentes NUMBER(5)    NOT NULL,
+    valoracion_obra     VARCHAR2(1)  NOT NULL,
+    CONSTRAINT PK_JPS_PRESENTACION       PRIMARY KEY (fecha_presentacion, idObra, ISBN, idClub),
+    CONSTRAINT FK_JPS_PRES_OBRA          FOREIGN KEY (idObra, ISBN, idClub)
+        REFERENCES JPS_OBRA_ACTUADA(idObra, ISBN, idClub),
+    CONSTRAINT CHECK_JPS_VALORACION_OBRA CHECK (valoracion_obra IN ('1','2','3','4','5'))
+);
+
+-- 23. MEJOR_ACTOR
+CREATE TABLE JPS_MEJOR_ACTOR (
+    idMiembro          NUMBER(6)    NOT NULL,
+    idObra             NUMBER(6)    NOT NULL,
+    ISBN               VARCHAR2(20) NOT NULL,
+    idClub             NUMBER(4)    NOT NULL,
+    fecha_presentacion DATE         NOT NULL,
+    CONSTRAINT PK_JPS_MEJOR_ACTOR     PRIMARY KEY (idMiembro, idObra, ISBN, idClub, fecha_presentacion),
+    CONSTRAINT FK_JPS_MA_ELENCO       FOREIGN KEY (idMiembro, idObra, ISBN, idClub)
+        REFERENCES JPS_ELENCO(idMiembro, idObra, ISBN, idClub),
+    CONSTRAINT FK_JPS_MA_PRESENTACION FOREIGN KEY (fecha_presentacion, idObra, ISBN, idClub)
+        REFERENCES JPS_PRESENTACION(fecha_presentacion, idObra, ISBN, idClub)
+);
+
+
+
+
+--  INSERTS COMPLETOS 
+-- ============================================================
+-- 1. PAIS
+-- ============================================================
+INSERT INTO JPS_PAIS VALUES (JPS_seq_pais.NEXTVAL, 'Estados Unidos', 'America', 'Dolar', 'Estadounidense');
+INSERT INTO JPS_PAIS VALUES (JPS_seq_pais.NEXTVAL, 'Brasil', 'America', 'Real', 'Brasileño');
+INSERT INTO JPS_PAIS VALUES (JPS_seq_pais.NEXTVAL, 'Reino Unido', 'Europa', 'Libra', 'Britanico');
+INSERT INTO JPS_PAIS VALUES (JPS_seq_pais.NEXTVAL, 'Paises Bajos', 'Europa', 'Euro', 'Neerlandes');
+INSERT INTO JPS_PAIS VALUES (JPS_seq_pais.NEXTVAL, 'Israel', 'Asia', 'Sequel', 'Israeli');
+INSERT INTO JPS_PAIS VALUES (JPS_seq_pais.NEXTVAL, 'Suecia', 'Europa', 'Corona', 'Sueco');
+INSERT INTO JPS_PAIS VALUES (JPS_seq_pais.NEXTVAL, 'Australia', 'Oceania', 'Dolar AUD', 'Australiano');
+INSERT INTO JPS_PAIS VALUES (JPS_seq_pais.NEXTVAL, 'Argentina', 'America', 'Peso', 'Argentino');
+INSERT INTO JPS_PAIS VALUES (JPS_seq_pais.NEXTVAL, 'Alemania', 'Europa', 'Euro', 'Aleman');
+INSERT INTO JPS_PAIS VALUES (JPS_seq_pais.NEXTVAL, 'India', 'Asia', 'Rupia', 'Indio');
+-- idPais: 1=EEUU, 2=Brasil, 3=ReinoUnido, 4=PaisesBajos, 5=Israel,
+--         6=Suecia, 7=Australia, 8=Argentina, 9=Alemania, 10=India
+ 
+-- ============================================================
+-- 2. CIUDAD
+-- ============================================================
+INSERT INTO JPS_CIUDAD VALUES (JPS_seq_ciudad.NEXTVAL, 9, 'Berlin');
+INSERT INTO JPS_CIUDAD VALUES (JPS_seq_ciudad.NEXTVAL, 9, 'Friburgo');
+INSERT INTO JPS_CIUDAD VALUES (JPS_seq_ciudad.NEXTVAL, 7, 'Melbourne');
+INSERT INTO JPS_CIUDAD VALUES (JPS_seq_ciudad.NEXTVAL, 7, 'Sydney');
+INSERT INTO JPS_CIUDAD VALUES (JPS_seq_ciudad.NEXTVAL, 7, 'Brisbane');
+INSERT INTO JPS_CIUDAD VALUES (JPS_seq_ciudad.NEXTVAL, 10, 'Nueva Delhi');
+INSERT INTO JPS_CIUDAD VALUES (JPS_seq_ciudad.NEXTVAL, 10, 'Mumbai');
+INSERT INTO JPS_CIUDAD VALUES (JPS_seq_ciudad.NEXTVAL, 10, 'Agra');
+INSERT INTO JPS_CIUDAD VALUES (JPS_seq_ciudad.NEXTVAL, 8, 'Buenos Aires');
+-- idCiudad: 1=Berlin, 2=Friburgo, 3=Melbourne, 4=Sydney, 5=Brisbane,
+--           6=NuevaDelhi, 7=Mumbai, 8=Agra, 9=BuenosAires
+ 
+-- ============================================================
+-- 3. INSTITUCION
+-- ============================================================
+INSERT INTO JPS_INSTITUCION VALUES (JPS_seq_institucion.NEXTVAL, 'Biblioteca Publica de Berlin', 'biblioteca');
+INSERT INTO JPS_INSTITUCION VALUES (JPS_seq_institucion.NEXTVAL, 'Universidad de Friburgo', 'universidad');
+INSERT INTO JPS_INSTITUCION VALUES (JPS_seq_institucion.NEXTVAL, 'Biblioteca Publica de Sydney', 'biblioteca');
+INSERT INTO JPS_INSTITUCION VALUES (JPS_seq_institucion.NEXTVAL, 'Universidad de Mumbai', 'universidad');
+INSERT INTO JPS_INSTITUCION VALUES (JPS_seq_institucion.NEXTVAL, 'Biblioteca Nacional de Australia', 'biblioteca');
+INSERT INTO JPS_INSTITUCION VALUES (JPS_seq_institucion.NEXTVAL, 'Universidad de Melbourne', 'universidad');
+INSERT INTO JPS_INSTITUCION VALUES (JPS_seq_institucion.NEXTVAL, 'Biblioteca Publica de Nueva Delhi', 'biblioteca');
+INSERT INTO JPS_INSTITUCION VALUES (JPS_seq_institucion.NEXTVAL, 'Colegio Aleman de Berlin', 'colegio');
+INSERT INTO JPS_INSTITUCION VALUES (JPS_seq_institucion.NEXTVAL, 'Universidad Humboldt de Berlin', 'universidad');
+-- idInstitucion: 1=BibBerlin, 2=UniFriburgo, 3=BibSydney, 4=UniMumbai,
+--               5=BibAustralia, 6=UniMelbourne, 7=BibNuevaDelhi, 8=ColegioAleman, 9=UniHumboldt
+ 
+-- ============================================================
+-- 4. IDIOMA
+-- ============================================================
+INSERT INTO JPS_IDIOMA VALUES (JPS_seq_idioma.NEXTVAL, 'Aleman');
+INSERT INTO JPS_IDIOMA VALUES (JPS_seq_idioma.NEXTVAL, 'Ingles');
+INSERT INTO JPS_IDIOMA VALUES (JPS_seq_idioma.NEXTVAL, 'Hindi');
+INSERT INTO JPS_IDIOMA VALUES (JPS_seq_idioma.NEXTVAL, 'Portugues');
+INSERT INTO JPS_IDIOMA VALUES (JPS_seq_idioma.NEXTVAL, 'Frances');
+INSERT INTO JPS_IDIOMA VALUES (JPS_seq_idioma.NEXTVAL, 'Italiano');
+INSERT INTO JPS_IDIOMA VALUES (JPS_seq_idioma.NEXTVAL, 'Japones');
+INSERT INTO JPS_IDIOMA VALUES (JPS_seq_idioma.NEXTVAL, 'Chino');
+INSERT INTO JPS_IDIOMA VALUES (JPS_seq_idioma.NEXTVAL, 'Arabe');
+-- idIdioma: 1=Aleman, 2=Ingles, 3=Hindi, 4=Portugues, 5=Frances,
+--           6=Italiano, 7=Japones, 8=Chino, 9=Arabe
+ 
+-- ============================================================
+-- 5. AUTOR
+-- ============================================================
+INSERT INTO JPS_AUTOR VALUES (JPS_seq_autor.NEXTVAL, 'Frank', 'Herbert', NULL, NULL, NULL);
+INSERT INTO JPS_AUTOR VALUES (JPS_seq_autor.NEXTVAL, 'Paulo', 'Coelho', NULL, NULL, NULL);
+INSERT INTO JPS_AUTOR VALUES (JPS_seq_autor.NEXTVAL, 'Ken', 'Follet', NULL, NULL, NULL);
+INSERT INTO JPS_AUTOR VALUES (JPS_seq_autor.NEXTVAL, 'Paula', 'Hawkins', NULL, NULL, NULL);
+INSERT INTO JPS_AUTOR VALUES (JPS_seq_autor.NEXTVAL, 'Stephen', 'King', NULL, NULL, NULL);
+INSERT INTO JPS_AUTOR VALUES (JPS_seq_autor.NEXTVAL, 'Arthur', 'Golden', NULL, NULL, NULL);
+INSERT INTO JPS_AUTOR VALUES (JPS_seq_autor.NEXTVAL, 'Ana', 'Frank', NULL, NULL, NULL);
+INSERT INTO JPS_AUTOR VALUES (JPS_seq_autor.NEXTVAL, 'Yuval', 'Harari', NULL, NULL, 'Noah');
+INSERT INTO JPS_AUTOR VALUES (JPS_seq_autor.NEXTVAL, 'Stieg', 'Larsson', NULL, NULL, NULL);
+INSERT INTO JPS_AUTOR VALUES (JPS_seq_autor.NEXTVAL, 'Khaled', 'Hosseini', NULL, NULL, NULL);
+INSERT INTO JPS_AUTOR VALUES (JPS_seq_autor.NEXTVAL, 'Markus', 'Zusak', NULL, NULL, NULL);
+INSERT INTO JPS_AUTOR VALUES (JPS_seq_autor.NEXTVAL, 'Horacio', 'Quiroga', NULL, NULL, NULL);
+INSERT INTO JPS_AUTOR VALUES (JPS_seq_autor.NEXTVAL, 'Aldous', 'Huxley', NULL, NULL, NULL);
+INSERT INTO JPS_AUTOR VALUES (JPS_seq_autor.NEXTVAL, 'Cassandra', 'Clare', NULL, NULL, NULL);
+INSERT INTO JPS_AUTOR VALUES (JPS_seq_autor.NEXTVAL, 'Louisa', 'Alcott', NULL, NULL, 'May');
+INSERT INTO JPS_AUTOR VALUES (JPS_seq_autor.NEXTVAL, 'Christopher', 'Paolini', NULL, NULL, NULL);
+-- idAutor: 1=Herbert, 2=Coelho, 3=Follet, 4=Hawkins, 5=King, 6=Golden,
+--          7=Frank, 8=Harari, 9=Larsson, 10=Hosseini, 11=Zusak, 12=Quiroga,
+--          13=Huxley, 14=Clare, 15=Alcott, 16=Paolini
+ 
+-- ============================================================
+-- 6. LIBRO
+-- ============================================================
+INSERT INTO JPS_LIBRO VALUES ('ISBN-01', 'Dune', 1965, 'En el planeta desertico Arrakis, el joven Paul Atreides lucha por sobrevivir tras la traicion que destruye a su familia, descubriendo su destino como lider de los Fremen.', 412, 'novela', 'Politica, ecologia y religion en un universo de ciencia ficcion');
+
+INSERT INTO JPS_LIBRO VALUES ('ISBN-02', 'El Alquimista', 1988, 'Santiago, un joven pastor andaluz, emprende un viaje hacia Egipto en busca de un tesoro, descubriendo en el camino el verdadero significado de la vida.', 192, 'novela', 'Busqueda espiritual y autodescubrimiento');
+
+INSERT INTO JPS_LIBRO VALUES ('ISBN-03', 'Los Pilares de la Tierra',1989, 'En la Inglaterra medieval, un constructor de catedrales lucha durante decadas para erigir la iglesia mas bella del mundo en medio de guerras, intrigas y traiciones.', 1000, 'novela', 'Historia medieval, poder y arquitectura');
+
+INSERT INTO JPS_LIBRO VALUES ('ISBN-04', 'La Chica del Tren', 2015, 'Rachel, una mujer alcoholica que viaja diariamente en tren, obsesionada con una pareja perfecta que ve desde la ventana, se ve envuelta en un misterioso caso de desaparicion.', 320, 'novela', 'Thriller psicologico y misterio');
+
+INSERT INTO JPS_LIBRO VALUES ('ISBN-05', 'It', 1986, 'Un grupo de ninos en el pueblo de Derry enfrenta a una entidad maligna que adopta la forma de sus miedos mas profundos, principalmente la de un payaso llamado Pennywise.', 1138, 'novela', 'Terror psicologico e infancia');
+
+INSERT INTO JPS_LIBRO VALUES ('ISBN-06', 'Memorias de una Geisha', 1997, 'Chiyo, una nina japonesa vendida como sirvienta, narra su transformacion en Sayuri, una de las geishas mas famosas de Gion, en el Japon previo a la Segunda Guerra Mundial.', 448, 'novela', 'Cultura japonesa y sacrificio personal');
+
+INSERT INTO JPS_LIBRO VALUES ('ISBN-07', 'El Diario de Ana Frank', 1942, 'El diario personal de Ana Frank, una nina judia que se oculto con su familia en Amsterdam durante la ocupacion nazi, relatando su vida cotidiana con esperanza y madurez.', 352, 'novela', 'Holocausto y resiliencia humana');
+
+INSERT INTO JPS_LIBRO VALUES ('ISBN-08', 'Sapiens: De Animales a Dioses', 2011, 'Yuval Noah Harari traza la historia de la humanidad desde los primeros Homo sapiens hasta la era moderna, explorando como la biologia y la historia han definido lo que somos.', 512,  'novela', 'Historia de la humanidad y evolucion social');
+
+INSERT INTO JPS_LIBRO VALUES ('ISBN-09', 'Los Hombres que no Amaban a las Mujeres', 2005, 'Lisbeth Salander y Mikael Blomkvist investigan la desaparicion de una joven cuarenta anos atras, descubriendo oscuros secretos de una familia sueca.', 672,  'novela', 'Misterio criminal y critica social');
+
+INSERT INTO JPS_LIBRO VALUES ('ISBN-10', 'Cometas en el Cielo', 2003, 'Amir, un nino afgano de familia acomodada, y Hassan, su amigo y sirviente, comparten una amistad marcada por la culpa y la redencion en el Afganistan previo a la invasion sovietica.', 384, 'novela', 'Amistad, culpa y redencion');
+
+INSERT INTO JPS_LIBRO VALUES ('ISBN-11', 'La Ladrona de Libros', 2005, 'Liesel Meminger, una nina alemana adoptada en plena Segunda Guerra Mundial, encuentra en los libros un refugio ante el horror de la guerra, narrada desde la perspectiva de la Muerte.',  584, 'novela', 'Segunda Guerra Mundial y poder de las palabras');
+
+INSERT INTO JPS_LIBRO VALUES ('ISBN-12', 'Cuentos de la Selva', 1918, 'Coleccion de cuentos donde animales de la selva sudamericana protagonizan historias de supervivencia, lealtad y la lucha entre la naturaleza salvaje y el mundo civilizado.', 120,  'cuento', 'Naturaleza, supervivencia y mundo animal');
+
+INSERT INTO JPS_LIBRO VALUES ('ISBN-13', 'Un Mundo Feliz', 1932, 'En un futuro distopico, la humanidad vive en aparente felicidad gracias al condicionamiento social y las drogas, hasta que un salvaje criado fuera de este sistema cuestiona todo.', 288, 'novela', 'Distopia, control social y libertad');
+
+INSERT INTO JPS_LIBRO VALUES ('ISBN-14', 'Ciudad de Hueso', 2007, 'Clary Fray descubre que pertenece a un linaje de Cazadores de Sombras, guerreros que protegen el mundo humano de demonios, y se ve envuelta en una guerra que amenaza ambos mundos.', 512, 'novela', 'Fantasia urbana y mundos ocultos');
+
+INSERT INTO JPS_LIBRO VALUES ('ISBN-15', 'Mujercitas', 1868, 'Las hermanas March crecen durante la Guerra Civil estadounidense aprendiendo sobre amor, sacrificio, ambicion e identidad bajo la guia de su madre Marmee.', 448,  'novela', 'Familia, identidad femenina y crecimiento personal');
+
+INSERT INTO JPS_LIBRO VALUES ('ISBN-16', 'Eragon', 2002, 'El joven granjero Eragon encuentra un huevo de dragon del que nace Saphira, iniciando un viaje epico para unirse a los legendarios Jinetes y combatir al malvado rey Galbatorix.', 544,  'novela', 'Fantasia epica y rito de iniciacion');
+ 
+-- ============================================================
+-- 7. L_A  (Libro - Autor)
+-- ============================================================
+INSERT INTO JPS_L_A VALUES ('ISBN-01', 1);
+INSERT INTO JPS_L_A VALUES ('ISBN-02', 2);
+INSERT INTO JPS_L_A VALUES ('ISBN-03', 3);
+INSERT INTO JPS_L_A VALUES ('ISBN-04', 4);
+INSERT INTO JPS_L_A VALUES ('ISBN-05', 5);
+INSERT INTO JPS_L_A VALUES ('ISBN-06', 6);
+INSERT INTO JPS_L_A VALUES ('ISBN-07', 7);
+INSERT INTO JPS_L_A VALUES ('ISBN-08', 8);
+INSERT INTO JPS_L_A VALUES ('ISBN-09', 9);
+INSERT INTO JPS_L_A VALUES ('ISBN-10', 10);
+INSERT INTO JPS_L_A VALUES ('ISBN-11', 11);
+INSERT INTO JPS_L_A VALUES ('ISBN-12', 12);
+INSERT INTO JPS_L_A VALUES ('ISBN-13', 13);
+INSERT INTO JPS_L_A VALUES ('ISBN-14', 14);
+INSERT INTO JPS_L_A VALUES ('ISBN-15', 15);
+INSERT INTO JPS_L_A VALUES ('ISBN-16', 16);
+ 
+-- ============================================================
+-- 8. CLUB_LECTURA
+-- Independientes (cuota='si'): 1,3,5,6,8
+-- Dependientes  (cuota='no'): 2,4,7
+-- ============================================================
+INSERT INTO JPS_CLUB_LECTURA VALUES (JPS_seq_club_lectura.NEXTVAL, 1, 'Paginas de Berlin', 'Unter den Linden 12', '493012345', 'berlin@paginas.com', '10115', 'si', NULL);
+INSERT INTO JPS_CLUB_LECTURA VALUES (JPS_seq_club_lectura.NEXTVAL, 2, 'Lectores de la Selva Negra', 'Schwarzwaldstrasse 5', '497612345', 'selvanegra@lect.com', '79098', 'no', 2);
+INSERT INTO JPS_CLUB_LECTURA VALUES (JPS_seq_club_lectura.NEXTVAL, 3, 'Outback Readers', 'Collins Street 88', '613012345', 'outback@readers.com', '3000', 'si', NULL);
+INSERT INTO JPS_CLUB_LECTURA VALUES (JPS_seq_club_lectura.NEXTVAL, 4, 'Sydney Book Society', 'George Street 200', '612012345', 'sydney@booksoc.com', '2000', 'no', 3);
+INSERT INTO JPS_CLUB_LECTURA VALUES (JPS_seq_club_lectura.NEXTVAL, 5, 'Canguros de Tinta', 'Queen Street 45', '617012345', 'canguros@tinta.com', '4000', 'si', NULL);
+INSERT INTO JPS_CLUB_LECTURA VALUES (JPS_seq_club_lectura.NEXTVAL, 6, 'Letras del Ganges', 'Connaught Place 10', '911112345', 'ganges@letras.com', '110001', 'si', NULL);
+INSERT INTO JPS_CLUB_LECTURA VALUES (JPS_seq_club_lectura.NEXTVAL, 7, 'Mentes de Mumbai', 'Marine Drive 33', '912212345', 'mumbai@mentes.com', '400001', 'no', 4);
+INSERT INTO JPS_CLUB_LECTURA VALUES (JPS_seq_club_lectura.NEXTVAL, 8, 'The Taj Mahal Reading Club', 'Taj Road 1', '915612345', 'tajmahal@reading.com','282001','si', NULL);
+-- idClub: 1=PaginasBerlin, 2=SelvaNegra, 3=Outback, 4=Sydney,
+--         5=Canguros, 6=Ganges, 7=Mumbai, 8=TajMahal
+ 
+-- ============================================================
+-- 9. ASOCIADO
+-- ============================================================
+INSERT INTO JPS_ASOCIADO VALUES (1, 1);
+INSERT INTO JPS_ASOCIADO VALUES (2, 1);
+INSERT INTO JPS_ASOCIADO VALUES (3, 2);
+INSERT INTO JPS_ASOCIADO VALUES (4, 2);
+INSERT INTO JPS_ASOCIADO VALUES (5, 2);
+INSERT INTO JPS_ASOCIADO VALUES (6, 2);
+INSERT INTO JPS_ASOCIADO VALUES (6, 3);
+INSERT INTO JPS_ASOCIADO VALUES (7, 2);
+INSERT INTO JPS_ASOCIADO VALUES (7, 3);
+INSERT INTO JPS_ASOCIADO VALUES (8, 2);
+INSERT INTO JPS_ASOCIADO VALUES (8, 3);
+ 
+-- ============================================================
+-- 10. GRUPO_LECTURA
+-- ============================================================
+-- Club 1 - Paginas de Berlin
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 1, 'adulto', TO_DATE('2020-01-10','YYYY-MM-DD'), 'Lunes', '18:00');
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 1, 'joven', TO_DATE('2020-01-10','YYYY-MM-DD'), 'Miercoles', '17:00');
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 1, 'niño', TO_DATE('2020-01-10','YYYY-MM-DD'), 'Viernes', '17:00');
+-- Club 2 - Lectores de la Selva Negra
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 2, 'adulto', TO_DATE('2019-03-05','YYYY-MM-DD'), 'Martes', '18:00');
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 2, 'joven', TO_DATE('2019-03-05','YYYY-MM-DD'), 'Jueves', '17:00');
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 2, 'niño', TO_DATE('2019-03-05','YYYY-MM-DD'), 'Viernes', '17:00');
+-- Club 3 - Outback Readers
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 3, 'adulto', TO_DATE('2021-06-01','YYYY-MM-DD'), 'Lunes', '18:00');
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 3, 'joven', TO_DATE('2021-06-01','YYYY-MM-DD'), 'Miercoles', '17:30');
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 3, 'niño', TO_DATE('2021-06-01','YYYY-MM-DD'), 'Jueves', '17:00');
+-- Club 4 - Sydney Book Society
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 4, 'adulto', TO_DATE('2018-08-15','YYYY-MM-DD'), 'Martes', '18:30');
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 4, 'joven', TO_DATE('2018-08-15','YYYY-MM-DD'), 'Jueves', '17:00');
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 4, 'niño', TO_DATE('2018-08-15','YYYY-MM-DD'), 'Viernes', '17:00');
+-- Club 5 - Canguros de Tinta
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 5, 'adulto', TO_DATE('2022-02-20','YYYY-MM-DD'), 'Lunes', '18:00');
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 5, 'joven', TO_DATE('2022-02-20','YYYY-MM-DD'), 'Miercoles', '17:00');
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 5, 'niño', TO_DATE('2022-02-20','YYYY-MM-DD'), 'Jueves', '17:00');
+-- Club 6 - Letras del Ganges
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 6, 'adulto', TO_DATE('2017-11-01','YYYY-MM-DD'), 'Lunes', '18:00');
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 6, 'joven', TO_DATE('2017-11-01','YYYY-MM-DD'), 'Martes', '17:00');
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 6, 'niño', TO_DATE('2017-11-01','YYYY-MM-DD'), 'Miercoles', '17:00');
+-- Club 7 - Mentes de Mumbai
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 7, 'adulto', TO_DATE('2016-05-10','YYYY-MM-DD'), 'Jueves', '18:00');
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 7, 'joven', TO_DATE('2016-05-10','YYYY-MM-DD'), 'Viernes', '17:00');
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 7, 'niño', TO_DATE('2016-05-10','YYYY-MM-DD'), 'Lunes', '17:00');
+-- Club 8 - The Taj Mahal Reading Club
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 8, 'adulto', TO_DATE('2020-09-01','YYYY-MM-DD'), 'Martes', '18:00');
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 8, 'joven', TO_DATE('2020-09-01','YYYY-MM-DD'), 'Jueves', '17:30');
+INSERT INTO JPS_GRUPO_LECTURA VALUES (JPS_seq_grupo_lectura.NEXTVAL, 8, 'niño', TO_DATE('2020-09-01','YYYY-MM-DD'), 'Viernes', '17:00');
+-- idGrupo por club (idGrupo, idClub):
+-- Club1: (1,1)adulto  (2,1)joven  (3,1)niño
+-- Club2: (4,2)adulto  (5,2)joven  (6,2)niño
+-- Club3: (7,3)adulto  (8,3)joven  (9,3)niño
+-- Club4: (10,4)adulto (11,4)joven (12,4)niño
+-- Club5: (13,5)adulto (14,5)joven (15,5)niño
+-- Club6: (16,6)adulto (17,6)joven (18,6)niño
+-- Club7: (19,7)adulto (20,7)joven (21,7)niño
+-- Club8: (22,8)adulto (23,8)joven (24,8)niño
+ 
+-- ============================================================
+-- 11. REPRESENTANTE
+-- ============================================================
+INSERT INTO JPS_REPRESENTANTE VALUES (JPS_seq_representante.NEXTVAL, 'DE11111111', 'Klaus', 'Muller', 'Schmidt', NULL, TO_DATE('1975-03-12','YYYY-MM-DD'), '491711111', 'klaus.muller@mail.de');
+
+INSERT INTO JPS_REPRESENTANTE VALUES (JPS_seq_representante.NEXTVAL, 'DE22222222', 'Ingrid', 'Fischer', 'Weber', NULL, TO_DATE('1978-07-22','YYYY-MM-DD'), '491722222', 'ingrid.fischer@mail.de');
+
+INSERT INTO JPS_REPRESENTANTE VALUES (JPS_seq_representante.NEXTVAL, 'AU33333333', 'James', 'Smith', 'Brown', NULL, TO_DATE('1980-11-05','YYYY-MM-DD'), '614133333', 'james.smith@mail.au');
+INSERT INTO JPS_REPRESENTANTE VALUES (JPS_seq_representante.NEXTVAL, 'AU44444444', 'Sarah', 'Johnson', 'Wilson', NULL, TO_DATE('1982-04-18','YYYY-MM-DD'), '614144444', 'sarah.johnson@mail.au');
+INSERT INTO JPS_REPRESENTANTE VALUES (JPS_seq_representante.NEXTVAL, 'IN55555555', 'Rahul', 'Sharma', 'Patel', NULL, TO_DATE('1979-09-30','YYYY-MM-DD'), '919155555', 'rahul.sharma@mail.in');
+INSERT INTO JPS_REPRESENTANTE VALUES (JPS_seq_representante.NEXTVAL, 'IN66666666', 'Priya', 'Gupta', 'Singh', NULL, TO_DATE('1983-01-14','YYYY-MM-DD'), '919166666', 'priya.gupta@mail.in');
+INSERT INTO JPS_REPRESENTANTE VALUES (JPS_seq_representante.NEXTVAL, 'AU77777777', 'Michael', 'Williams', 'Jones', NULL, TO_DATE('1977-06-22','YYYY-MM-DD'), '614177777', 'michael.williams@mail.au');
+INSERT INTO JPS_REPRESENTANTE VALUES (JPS_seq_representante.NEXTVAL, 'IN88888888', 'Sunita', 'Reddy', 'Naidu', NULL, TO_DATE('1981-03-08','YYYY-MM-DD'), '919188888', 'sunita.reddy@mail.in');
+INSERT INTO JPS_REPRESENTANTE VALUES (JPS_seq_representante.NEXTVAL, 'IN99999999', 'Ramesh', 'Iyer', 'Krishnamurthy', NULL, TO_DATE('1976-11-15','YYYY-MM-DD'), '919199999', 'ramesh.iyer@mail.in');
+-- idRepresentante: 1=Klaus, 2=Ingrid, 3=James, 4=Sarah, 5=Rahul,
+--                  6=Priya, 7=Michael, 8=Sunita, 9=Ramesh
+ 
+-- ============================================================
+-- 12. MIEMBRO
+-- Adultos: nacidos antes de 2000 (>25 años)
+-- Jovenes: nacidos 2000-2012 (13-25 años)
+-- Niños:   nacidos 2013-2019 (6-12 años) → necesitan representante
+-- ============================================================
+ 
+-- ===== CLUB 1 - Paginas de Berlin =====
+-- Grupo adulto (1,1) → miembros 1-4
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE10000001', 'Hans',   'Becker',    'Hoffmann', TO_DATE('1985-04-10','YYYY-MM-DD'), '491710001', 'hans.becker@mail.de',    NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE10000002', 'Anna',   'Schneider', 'Koch',     TO_DATE('1990-08-22','YYYY-MM-DD'), '491710002', 'anna.schneider@mail.de', NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE10000003', 'Erik',   'Wagner',    'Bauer',    TO_DATE('1978-12-05','YYYY-MM-DD'), '491710003', 'erik.wagner@mail.de',    NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE10000004', 'Petra',  'Meyer',     'Schulz',   TO_DATE('1982-06-17','YYYY-MM-DD'), '491710004', 'petra.meyer@mail.de',    NULL, NULL, NULL);
+-- Grupo joven (2,1) → miembros 5-8
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE10000005', 'Leon',   'Richter',   'Wolf',     TO_DATE('2005-03-14','YYYY-MM-DD'), '491710005', 'leon.richter@mail.de',   NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE10000006', 'Mia',    'Klein',     'Braun',    TO_DATE('2007-09-28','YYYY-MM-DD'), '491710006', 'mia.klein@mail.de',      NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE10000007', 'Finn',   'Schulz',    'Lange',    TO_DATE('2004-11-02','YYYY-MM-DD'), '491710007', 'finn.schulz@mail.de',    NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE10000008', 'Sophie', 'Weber',     'Krause',   TO_DATE('2006-07-19','YYYY-MM-DD'), '491710008', 'sophie.weber@mail.de',   NULL, NULL, NULL);
+-- Grupo niño (3,1) → miembros 9-12
+-- idRepresentante: representante legal externo
+-- idMiembro_representado: adulto responsable dentro del club (miembro 1=Hans, miembro 3=Erik)
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE10000009', 'Max',    'Muller',    'Schmidt',  TO_DATE('2015-02-08','YYYY-MM-DD'), '491710009', 'max.muller@mail.de',     1, 1, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE10000010', 'Lena',   'Fischer',   'Weber',    TO_DATE('2014-05-23','YYYY-MM-DD'), '491710010', 'lena.fischer@mail.de',   1, 1, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE10000011', 'Tom',    'Becker',    'Hoffmann', TO_DATE('2016-10-11','YYYY-MM-DD'), '491710011', 'tom.becker@mail.de',     2, 3, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE10000012', 'Emma',   'Schneider', 'Koch',     TO_DATE('2015-08-30','YYYY-MM-DD'), '491710012', 'emma.schneider@mail.de', 2, 3, NULL);
+ 
+-- ===== CLUB 2 - Lectores de la Selva Negra =====
+-- Grupo adulto (4,2) → miembros 13-16
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE20000001', 'Franz',  'Huber',      'Maier',   TO_DATE('1975-01-20','YYYY-MM-DD'), '497620001', 'franz.huber@mail.de',   NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE20000002', 'Helga',  'Zimmermann', 'Gruber',  TO_DATE('1980-04-15','YYYY-MM-DD'), '497620002', 'helga.zimm@mail.de',    NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE20000003', 'Otto',   'Braun',      'Kraus',   TO_DATE('1970-09-03','YYYY-MM-DD'), '497620003', 'otto.braun@mail.de',    NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE20000004', 'Greta',  'Wolf',       'Lehmann', TO_DATE('1988-12-28','YYYY-MM-DD'), '497620004', 'greta.wolf@mail.de',    NULL, NULL, NULL);
+-- Grupo joven (5,2) → miembros 17-20
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE20000005', 'Lukas',  'Lange',      'Schmitt', TO_DATE('2003-06-11','YYYY-MM-DD'), '497620005', 'lukas.lange@mail.de',   NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE20000006', 'Julia',  'Krause',     'Bauer',   TO_DATE('2005-02-24','YYYY-MM-DD'), '497620006', 'julia.krause@mail.de',  NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE20000007', 'Tobias', 'Fuchs',      'Keller',  TO_DATE('2004-08-07','YYYY-MM-DD'), '497620007', 'tobias.fuchs@mail.de',  NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE20000008', 'Laura',  'Koch',       'Simon',   TO_DATE('2006-11-19','YYYY-MM-DD'), '497620008', 'laura.koch@mail.de',    NULL, NULL, NULL);
+-- Grupo niño (6,2) → miembros 21-24
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE20000009', 'Jonas',  'Huber',      'Maier',   TO_DATE('2014-03-15','YYYY-MM-DD'), '497620009', 'jonas.huber@mail.de',   1, 13, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE20000010', 'Clara',  'Zimmermann', 'Gruber',  TO_DATE('2015-07-22','YYYY-MM-DD'), '497620010', 'clara.zimm@mail.de',    1, 13, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE20000011', 'Felix',  'Braun',      'Kraus',   TO_DATE('2016-01-09','YYYY-MM-DD'), '497620011', 'felix.braun@mail.de',   2, 15, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 9, 'DE20000012', 'Ida',    'Wolf',       'Lehmann', TO_DATE('2013-10-30','YYYY-MM-DD'), '497620012', 'ida.wolf@mail.de',      2, 15, NULL);
+ 
+-- ===== CLUB 3 - Outback Readers =====
+-- Grupo adulto (7,3) → miembros 25-28
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU30000001', 'Oliver',    'Brown',    'Taylor',   TO_DATE('1983-05-14','YYYY-MM-DD'), '614130001', 'oliver.brown@mail.au',    NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU30000002', 'Charlotte', 'Davis',    'Wilson',   TO_DATE('1991-09-27','YYYY-MM-DD'), '614130002', 'charlotte.davis@mail.au', NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU30000003', 'William',   'Martin',   'Anderson', TO_DATE('1977-02-18','YYYY-MM-DD'), '614130003', 'william.martin@mail.au',  NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU30000004', 'Emily',     'Thompson', 'Jackson',  TO_DATE('1986-11-03','YYYY-MM-DD'), '614130004', 'emily.thompson@mail.au',  NULL, NULL, NULL);
+-- Grupo joven (8,3) → miembros 29-32
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU30000005', 'Noah',   'White',    'Harris', TO_DATE('2004-04-22','YYYY-MM-DD'), '614130005', 'noah.white@mail.au',    NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU30000006', 'Ava',    'Clark',    'Lewis',  TO_DATE('2006-08-15','YYYY-MM-DD'), '614130006', 'ava.clark@mail.au',     NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU30000007', 'Liam',   'Robinson', 'Walker', TO_DATE('2005-12-01','YYYY-MM-DD'), '614130007', 'liam.robinson@mail.au', NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU30000008', 'Grace',  'Hall',     'Young',  TO_DATE('2007-03-19','YYYY-MM-DD'), '614130008', 'grace.hall@mail.au',    NULL, NULL, NULL);
+-- Grupo niño (9,3) → miembros 33-36
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU30000009', 'Jack',  'Smith',    'Brown',  TO_DATE('2014-06-08','YYYY-MM-DD'), '614130009', 'jack.smith@mail.au',    3, 25, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU30000010', 'Lily',  'Johnson',  'Wilson', TO_DATE('2015-10-24','YYYY-MM-DD'), '614130010', 'lily.johnson@mail.au',  3, 25, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU30000011', 'Harry', 'Williams', 'Jones',  TO_DATE('2016-02-13','YYYY-MM-DD'), '614130011', 'harry.williams@mail.au',4, 27, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU30000012', 'Isla',  'Jones',    'Davis',  TO_DATE('2013-09-05','YYYY-MM-DD'), '614130012', 'isla.jones@mail.au',    4, 27, NULL);
+ 
+-- ===== CLUB 4 - Sydney Book Society =====
+-- Grupo adulto (10,4) → miembros 37-40
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU40000001', 'Thomas',   'Moore',    'Taylor',   TO_DATE('1979-07-16','YYYY-MM-DD'), '612040001', 'thomas.moore@mail.au',    NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU40000002', 'Jessica',  'Taylor',   'Anderson', TO_DATE('1987-03-29','YYYY-MM-DD'), '612040002', 'jessica.taylor@mail.au',  NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU40000003', 'Daniel',   'Anderson', 'Thomas',   TO_DATE('1975-11-12','YYYY-MM-DD'), '612040003', 'daniel.anderson@mail.au', NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU40000004', 'Olivia',   'Jackson',  'Martin',   TO_DATE('1993-05-07','YYYY-MM-DD'), '612040004', 'olivia.jackson@mail.au',  NULL, NULL, NULL);
+-- Grupo joven (11,4) → miembros 41-44
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU40000005', 'Ethan',    'Harris',   'Thompson', TO_DATE('2003-08-31','YYYY-MM-DD'), '612040005', 'ethan.harris@mail.au',    NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU40000006', 'Sophia',   'Martin',   'Garcia',   TO_DATE('2005-01-14','YYYY-MM-DD'), '612040006', 'sophia.martin@mail.au',   NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU40000007', 'Mason',    'Garcia',   'Martinez', TO_DATE('2006-06-27','YYYY-MM-DD'), '612040007', 'mason.garcia@mail.au',    NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU40000008', 'Isabella', 'Martinez', 'Lopez',    TO_DATE('2004-10-09','YYYY-MM-DD'), '612040008', 'isabella.mart@mail.au',   NULL, NULL, NULL);
+-- Grupo niño (12,4) → miembros 45-48
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU40000009', 'Lucas',  'Robinson', 'Walker', TO_DATE('2014-04-18','YYYY-MM-DD'), '612040009', 'lucas.robinson@mail.au', 3, 37, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU40000010', 'Mia',    'Walker',   'Hall',   TO_DATE('2015-08-03','YYYY-MM-DD'), '612040010', 'mia.walker@mail.au',     4, 38, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU40000011', 'Henry',  'Hall',     'Young',  TO_DATE('2016-12-21','YYYY-MM-DD'), '612040011', 'henry.hall@mail.au',     4, 38, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU40000012', 'Amelia', 'Young',    'Allen',  TO_DATE('2013-07-14','YYYY-MM-DD'), '612040012', 'amelia.young@mail.au',   3, 37, NULL);
+ 
+-- ===== CLUB 5 - Canguros de Tinta =====
+-- Grupo adulto (13,5) → miembros 49-52
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU50000001', 'Alexander', 'Allen',  'King',   TO_DATE('1981-02-25','YYYY-MM-DD'), '617050001', 'alex.allen@mail.au',    NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU50000002', 'Chloe',     'King',   'Wright', TO_DATE('1989-06-10','YYYY-MM-DD'), '617050002', 'chloe.king@mail.au',    NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU50000003', 'Benjamin',  'Wright', 'Scott',  TO_DATE('1976-10-03','YYYY-MM-DD'), '617050003', 'ben.wright@mail.au',    NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU50000004', 'Hannah',    'Scott',  'Green',  TO_DATE('1984-04-17','YYYY-MM-DD'), '617050004', 'hannah.scott@mail.au',  NULL, NULL, NULL);
+-- Grupo joven (14,5) → miembros 53-56
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU50000005', 'Samuel',  'Green',  'Baker',  TO_DATE('2004-07-29','YYYY-MM-DD'), '617050005', 'samuel.green@mail.au',   NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU50000006', 'Zoe',     'Baker',  'Adams',  TO_DATE('2006-11-12','YYYY-MM-DD'), '617050006', 'zoe.baker@mail.au',      NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU50000007', 'Ryan',    'Adams',  'Nelson', TO_DATE('2005-03-05','YYYY-MM-DD'), '617050007', 'ryan.adams@mail.au',     NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU50000008', 'Natalie', 'Nelson', 'Carter', TO_DATE('2007-08-18','YYYY-MM-DD'), '617050008', 'natalie.nelson@mail.au', NULL, NULL, NULL);
+-- Grupo niño (15,5) → miembros 57-60
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU50000009', 'Dylan', 'Carter',   'Mitchell', TO_DATE('2014-05-07','YYYY-MM-DD'), '617050009', 'dylan.carter@mail.au',   3, 49, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU50000010', 'Ruby',  'Mitchell', 'Perez',    TO_DATE('2015-09-20','YYYY-MM-DD'), '617050010', 'ruby.mitchell@mail.au',  4, 50, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU50000011', 'Logan', 'Perez',    'Roberts',  TO_DATE('2016-01-15','YYYY-MM-DD'), '617050011', 'logan.perez@mail.au',    4, 50, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 7, 'AU50000012', 'Zara',  'Roberts',  'Turner',   TO_DATE('2013-11-28','YYYY-MM-DD'), '617050012', 'zara.roberts@mail.au',   3, 49, NULL);
+ 
+-- ===== CLUB 6 - Letras del Ganges =====
+-- Grupo adulto (16,6) → miembros 61-64
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN60000001', 'Arjun',  'Sharma', 'Kumar', TO_DATE('1984-03-18','YYYY-MM-DD'), '911160001', 'arjun.sharma@mail.in',  NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN60000002', 'Priya',  'Kumar',  'Singh', TO_DATE('1990-07-04','YYYY-MM-DD'), '911160002', 'priya.kumar@mail.in',   NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN60000003', 'Vikram', 'Patel',  'Shah',  TO_DATE('1978-11-22','YYYY-MM-DD'), '911160003', 'vikram.patel@mail.in',  NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN60000004', 'Ananya', 'Singh',  'Verma', TO_DATE('1986-05-09','YYYY-MM-DD'), '911160004', 'ananya.singh@mail.in',  NULL, NULL, NULL);
+-- Grupo joven (17,6) → miembros 65-68
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN60000005', 'Rohan',  'Gupta', 'Mehta', TO_DATE('2004-09-16','YYYY-MM-DD'), '911160005', 'rohan.gupta@mail.in',   NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN60000006', 'Ishaan', 'Mehta', 'Joshi', TO_DATE('2006-01-29','YYYY-MM-DD'), '911160006', 'ishaan.mehta@mail.in',  NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN60000007', 'Kavya',  'Joshi', 'Nair',  TO_DATE('2005-05-12','YYYY-MM-DD'), '911160007', 'kavya.joshi@mail.in',   NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN60000008', 'Anika',  'Nair',  'Reddy', TO_DATE('2007-10-25','YYYY-MM-DD'), '911160008', 'anika.nair@mail.in',    NULL, NULL, NULL);
+-- Grupo niño (18,6) → miembros 69-72
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN60000009', 'Aarav',  'Sharma', 'Kumar', TO_DATE('2014-02-14','YYYY-MM-DD'), '911160009', 'aarav.sharma@mail.in',  5, 61, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN60000010', 'Diya',   'Kumar',  'Singh', TO_DATE('2015-06-27','YYYY-MM-DD'), '911160010', 'diya.kumar@mail.in',    5, 61, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN60000011', 'Vihaan', 'Patel',  'Shah',  TO_DATE('2016-10-10','YYYY-MM-DD'), '911160011', 'vihaan.patel@mail.in',  6, 63, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN60000012', 'Saanvi', 'Singh',  'Verma', TO_DATE('2013-04-03','YYYY-MM-DD'), '911160012', 'saanvi.singh@mail.in',  6, 63, NULL);
+ 
+-- ===== CLUB 7 - Mentes de Mumbai =====
+-- Grupo adulto (19,7) → miembros 73-76
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN70000001', 'Siddharth', 'Verma',    'Kapoor',   TO_DATE('1980-06-21','YYYY-MM-DD'), '912270001', 'siddharth.v@mail.in',   NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN70000002', 'Pooja',     'Kapoor',   'Bose',     TO_DATE('1988-10-14','YYYY-MM-DD'), '912270002', 'pooja.kapoor@mail.in',  NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN70000003', 'Karan',     'Bose',     'Malhotra', TO_DATE('1976-02-07','YYYY-MM-DD'), '912270003', 'karan.bose@mail.in',    NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN70000004', 'Meera',     'Malhotra', 'Chauhan',  TO_DATE('1993-08-30','YYYY-MM-DD'), '912270004', 'meera.malhot@mail.in',  NULL, NULL, NULL);
+-- Grupo joven (20,7) → miembros 77-80
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN70000005', 'Ayaan', 'Chauhan', 'Saxena',  TO_DATE('2003-12-03','YYYY-MM-DD'), '912270005', 'ayaan.chauhan@mail.in', NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN70000006', 'Riya',  'Saxena',  'Pandey',  TO_DATE('2005-04-16','YYYY-MM-DD'), '912270006', 'riya.saxena@mail.in',   NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN70000007', 'Kabir', 'Pandey',  'Trivedi', TO_DATE('2006-08-29','YYYY-MM-DD'), '912270007', 'kabir.pandey@mail.in',  NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN70000008', 'Zara',  'Trivedi', 'Agarwal', TO_DATE('2004-02-12','YYYY-MM-DD'), '912270008', 'zara.trivedi@mail.in',  NULL, NULL, NULL);
+-- Grupo niño (21,7) → miembros 81-84
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN70000009', 'Aryan', 'Verma',    'Kapoor',   TO_DATE('2014-07-19','YYYY-MM-DD'), '912270009', 'aryan.verma@mail.in',   5, 73, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN70000010', 'Aisha', 'Kapoor',   'Bose',     TO_DATE('2015-11-02','YYYY-MM-DD'), '912270010', 'aisha.kapoor@mail.in',  6, 74, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN70000011', 'Dhruv', 'Bose',     'Malhotra', TO_DATE('2016-03-25','YYYY-MM-DD'), '912270011', 'dhruv.bose@mail.in',    6, 74, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN70000012', 'Nisha', 'Malhotra', 'Chauhan',  TO_DATE('2013-08-18','YYYY-MM-DD'), '912270012', 'nisha.malhot@mail.in',  5, 73, NULL);
+ 
+-- ===== CLUB 8 - The Taj Mahal Reading Club =====
+-- Grupo adulto (22,8) → miembros 85-88
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN80000001', 'Raj',    'Khanna', 'Bajaj',  TO_DATE('1982-04-11','YYYY-MM-DD'), '915680001', 'raj.khanna@mail.in',    NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN80000002', 'Sunita', 'Bajaj',  'Chopra', TO_DATE('1991-08-24','YYYY-MM-DD'), '915680002', 'sunita.bajaj@mail.in',  NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN80000003', 'Nikhil', 'Chopra', 'Tiwari', TO_DATE('1974-12-17','YYYY-MM-DD'), '915680003', 'nikhil.chopra@mail.in', NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN80000004', 'Divya',  'Tiwari', 'Mishra', TO_DATE('1985-06-30','YYYY-MM-DD'), '915680004', 'divya.tiwari@mail.in',  NULL, NULL, NULL);
+-- Grupo joven (23,8) → miembros 89-92
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN80000005', 'Shaurya', 'Mishra',      'Srivastava', TO_DATE('2004-10-13','YYYY-MM-DD'), '915680005', 'shaurya.m@mail.in',   NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN80000006', 'Shreya',  'Srivastava',  'Yadav',      TO_DATE('2006-02-26','YYYY-MM-DD'), '915680006', 'shreya.sri@mail.in',  NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN80000007', 'Advait',  'Yadav',       'Dubey',      TO_DATE('2005-07-09','YYYY-MM-DD'), '915680007', 'advait.yadav@mail.in',NULL, NULL, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN80000008', 'Tanvi',   'Dubey',       'Shukla',     TO_DATE('2007-12-22','YYYY-MM-DD'), '915680008', 'tanvi.dubey@mail.in', NULL, NULL, NULL);
+-- Grupo niño (24,8) → miembros 93-96
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN80000009', 'Atharv',  'Khanna', 'Bajaj',  TO_DATE('2014-09-01','YYYY-MM-DD'), '915680009', 'atharv.khanna@mail.in', 5, 85, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN80000010', 'Myra',    'Bajaj',  'Chopra', TO_DATE('2015-01-14','YYYY-MM-DD'), '915680010', 'myra.bajaj@mail.in',    8, 86, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN80000011', 'Reyansh', 'Chopra', 'Tiwari', TO_DATE('2016-05-27','YYYY-MM-DD'), '915680011', 'reyansh.chopra@mail.in',8, 86, NULL);
+INSERT INTO JPS_MIEMBRO VALUES (JPS_seq_miembro.NEXTVAL, 10, 'IN80000012', 'Anvi',    'Tiwari', 'Mishra', TO_DATE('2013-10-10','YYYY-MM-DD'), '915680012', 'anvi.tiwari@mail.in',   9, 87, NULL);
+ 
+-- ============================================================
+-- 13. I_M
+-- ============================================================
+-- Miembros alemanes
+INSERT INTO JPS_I_M VALUES (1,  1, 1,  NULL);
+INSERT INTO JPS_I_M VALUES (2,  1, 2,  NULL);
+INSERT INTO JPS_I_M VALUES (3,  1, 3,  NULL);
+INSERT INTO JPS_I_M VALUES (4,  1, 4,  NULL);
+INSERT INTO JPS_I_M VALUES (5,  1, 13, NULL);
+INSERT INTO JPS_I_M VALUES (6,  1, 14, NULL);
+INSERT INTO JPS_I_M VALUES (7,  1, 15, NULL);
+INSERT INTO JPS_I_M VALUES (8,  1, 16, NULL);
+-- Miembros australianos
+INSERT INTO JPS_I_M VALUES (9,  2, 25, NULL);
+INSERT INTO JPS_I_M VALUES (10, 2, 26, NULL);
+INSERT INTO JPS_I_M VALUES (11, 2, 27, NULL);
+INSERT INTO JPS_I_M VALUES (12, 2, 28, NULL);
+INSERT INTO JPS_I_M VALUES (13, 2, 37, NULL);
+INSERT INTO JPS_I_M VALUES (14, 2, 38, NULL);
+INSERT INTO JPS_I_M VALUES (15, 2, 39, NULL);
+INSERT INTO JPS_I_M VALUES (16, 2, 40, NULL);
+-- Miembros indios 
+INSERT INTO JPS_I_M VALUES (17, 3, 61, NULL);
+INSERT INTO JPS_I_M VALUES (18, 2, 61, NULL);
+INSERT INTO JPS_I_M VALUES (19, 3, 62, NULL);
+INSERT INTO JPS_I_M VALUES (20, 2, 62, NULL);
+INSERT INTO JPS_I_M VALUES (21, 3, 63, NULL);
+INSERT INTO JPS_I_M VALUES (22, 2, 63, NULL);
+INSERT INTO JPS_I_M VALUES (23, 3, 64, NULL);
+INSERT INTO JPS_I_M VALUES (24, 2, 64, NULL);
+-- Idiomas por club
+INSERT INTO JPS_I_M VALUES (25, 1, NULL, 1);
+INSERT INTO JPS_I_M VALUES (26, 1, NULL, 2);
+INSERT INTO JPS_I_M VALUES (27, 2, NULL, 3);
+INSERT INTO JPS_I_M VALUES (28, 2, NULL, 4);
+INSERT INTO JPS_I_M VALUES (29, 2, NULL, 5);
+INSERT INTO JPS_I_M VALUES (30, 2, NULL, 6);
+INSERT INTO JPS_I_M VALUES (31, 3, NULL, 6);
+INSERT INTO JPS_I_M VALUES (32, 2, NULL, 7);
+INSERT INTO JPS_I_M VALUES (33, 3, NULL, 7);
+INSERT INTO JPS_I_M VALUES (34, 2, NULL, 8);
+INSERT INTO JPS_I_M VALUES (35, 3, NULL, 8);
+ 
+-- ============================================================
+-- 14. PREFERENCIA
+-- Pide 3 obras preferidas por miembro al unirse
+-- ============================================================
+-- Club 1 adultos
+INSERT INTO JPS_PREFERENCIA VALUES (1,  'ISBN-01', 1); INSERT INTO JPS_PREFERENCIA VALUES (1,  'ISBN-05', 2); INSERT INTO JPS_PREFERENCIA VALUES (1,  'ISBN-13', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (2,  'ISBN-03', 1); INSERT INTO JPS_PREFERENCIA VALUES (2,  'ISBN-07', 2); INSERT INTO JPS_PREFERENCIA VALUES (2,  'ISBN-11', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (3,  'ISBN-08', 1); INSERT INTO JPS_PREFERENCIA VALUES (3,  'ISBN-02', 2); INSERT INTO JPS_PREFERENCIA VALUES (3,  'ISBN-04', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (4,  'ISBN-06', 1); INSERT INTO JPS_PREFERENCIA VALUES (4,  'ISBN-09', 2); INSERT INTO JPS_PREFERENCIA VALUES (4,  'ISBN-15', 3);
+-- Club 1 jovenes
+INSERT INTO JPS_PREFERENCIA VALUES (5,  'ISBN-16', 1); INSERT INTO JPS_PREFERENCIA VALUES (5,  'ISBN-14', 2); INSERT INTO JPS_PREFERENCIA VALUES (5,  'ISBN-05', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (6,  'ISBN-14', 1); INSERT INTO JPS_PREFERENCIA VALUES (6,  'ISBN-16', 2); INSERT INTO JPS_PREFERENCIA VALUES (6,  'ISBN-15', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (7,  'ISBN-12', 1); INSERT INTO JPS_PREFERENCIA VALUES (7,  'ISBN-02', 2); INSERT INTO JPS_PREFERENCIA VALUES (7,  'ISBN-10', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (8,  'ISBN-10', 1); INSERT INTO JPS_PREFERENCIA VALUES (8,  'ISBN-12', 2); INSERT INTO JPS_PREFERENCIA VALUES (8,  'ISBN-16', 3);
+-- Club 2 adultos
+INSERT INTO JPS_PREFERENCIA VALUES (13, 'ISBN-03', 1); INSERT INTO JPS_PREFERENCIA VALUES (13, 'ISBN-01', 2); INSERT INTO JPS_PREFERENCIA VALUES (13, 'ISBN-08', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (14, 'ISBN-07', 1); INSERT INTO JPS_PREFERENCIA VALUES (14, 'ISBN-11', 2); INSERT INTO JPS_PREFERENCIA VALUES (14, 'ISBN-13', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (15, 'ISBN-04', 1); INSERT INTO JPS_PREFERENCIA VALUES (15, 'ISBN-09', 2); INSERT INTO JPS_PREFERENCIA VALUES (15, 'ISBN-06', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (16, 'ISBN-02', 1); INSERT INTO JPS_PREFERENCIA VALUES (16, 'ISBN-15', 2); INSERT INTO JPS_PREFERENCIA VALUES (16, 'ISBN-05', 3);
+-- Club 3 adultos
+INSERT INTO JPS_PREFERENCIA VALUES (25, 'ISBN-05', 1); INSERT INTO JPS_PREFERENCIA VALUES (25, 'ISBN-04', 2); INSERT INTO JPS_PREFERENCIA VALUES (25, 'ISBN-09', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (26, 'ISBN-11', 1); INSERT INTO JPS_PREFERENCIA VALUES (26, 'ISBN-07', 2); INSERT INTO JPS_PREFERENCIA VALUES (26, 'ISBN-03', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (27, 'ISBN-01', 1); INSERT INTO JPS_PREFERENCIA VALUES (27, 'ISBN-08', 2); INSERT INTO JPS_PREFERENCIA VALUES (27, 'ISBN-13', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (28, 'ISBN-15', 1); INSERT INTO JPS_PREFERENCIA VALUES (28, 'ISBN-06', 2); INSERT INTO JPS_PREFERENCIA VALUES (28, 'ISBN-02', 3);
+-- Club 4 adultos
+INSERT INTO JPS_PREFERENCIA VALUES (37, 'ISBN-04', 1); INSERT INTO JPS_PREFERENCIA VALUES (37, 'ISBN-09', 2); INSERT INTO JPS_PREFERENCIA VALUES (37, 'ISBN-11', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (38, 'ISBN-06', 1); INSERT INTO JPS_PREFERENCIA VALUES (38, 'ISBN-15', 2); INSERT INTO JPS_PREFERENCIA VALUES (38, 'ISBN-10', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (39, 'ISBN-13', 1); INSERT INTO JPS_PREFERENCIA VALUES (39, 'ISBN-01', 2); INSERT INTO JPS_PREFERENCIA VALUES (39, 'ISBN-08', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (40, 'ISBN-02', 1); INSERT INTO JPS_PREFERENCIA VALUES (40, 'ISBN-14', 2); INSERT INTO JPS_PREFERENCIA VALUES (40, 'ISBN-16', 3);
+-- Club 5 adultos
+INSERT INTO JPS_PREFERENCIA VALUES (49, 'ISBN-10', 1); INSERT INTO JPS_PREFERENCIA VALUES (49, 'ISBN-02', 2); INSERT INTO JPS_PREFERENCIA VALUES (49, 'ISBN-07', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (50, 'ISBN-12', 1); INSERT INTO JPS_PREFERENCIA VALUES (50, 'ISBN-10', 2); INSERT INTO JPS_PREFERENCIA VALUES (50, 'ISBN-05', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (51, 'ISBN-16', 1); INSERT INTO JPS_PREFERENCIA VALUES (51, 'ISBN-14', 2); INSERT INTO JPS_PREFERENCIA VALUES (51, 'ISBN-13', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (52, 'ISBN-09', 1); INSERT INTO JPS_PREFERENCIA VALUES (52, 'ISBN-03', 2); INSERT INTO JPS_PREFERENCIA VALUES (52, 'ISBN-11', 3);
+-- Club 6 adultos
+INSERT INTO JPS_PREFERENCIA VALUES (61, 'ISBN-08', 1); INSERT INTO JPS_PREFERENCIA VALUES (61, 'ISBN-10', 2); INSERT INTO JPS_PREFERENCIA VALUES (61, 'ISBN-02', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (62, 'ISBN-06', 1); INSERT INTO JPS_PREFERENCIA VALUES (62, 'ISBN-08', 2); INSERT INTO JPS_PREFERENCIA VALUES (62, 'ISBN-15', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (63, 'ISBN-01', 1); INSERT INTO JPS_PREFERENCIA VALUES (63, 'ISBN-13', 2); INSERT INTO JPS_PREFERENCIA VALUES (63, 'ISBN-09', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (64, 'ISBN-07', 1); INSERT INTO JPS_PREFERENCIA VALUES (64, 'ISBN-11', 2); INSERT INTO JPS_PREFERENCIA VALUES (64, 'ISBN-04', 3);
+-- Club 7 adultos
+INSERT INTO JPS_PREFERENCIA VALUES (73, 'ISBN-01', 1); INSERT INTO JPS_PREFERENCIA VALUES (73, 'ISBN-09', 2); INSERT INTO JPS_PREFERENCIA VALUES (73, 'ISBN-05', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (74, 'ISBN-03', 1); INSERT INTO JPS_PREFERENCIA VALUES (74, 'ISBN-13', 2); INSERT INTO JPS_PREFERENCIA VALUES (74, 'ISBN-08', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (75, 'ISBN-11', 1); INSERT INTO JPS_PREFERENCIA VALUES (75, 'ISBN-07', 2); INSERT INTO JPS_PREFERENCIA VALUES (75, 'ISBN-02', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (76, 'ISBN-04', 1); INSERT INTO JPS_PREFERENCIA VALUES (76, 'ISBN-06', 2); INSERT INTO JPS_PREFERENCIA VALUES (76, 'ISBN-15', 3);
+-- Club 8 adultos
+INSERT INTO JPS_PREFERENCIA VALUES (85, 'ISBN-15', 1); INSERT INTO JPS_PREFERENCIA VALUES (85, 'ISBN-06', 2); INSERT INTO JPS_PREFERENCIA VALUES (85, 'ISBN-10', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (86, 'ISBN-08', 1); INSERT INTO JPS_PREFERENCIA VALUES (86, 'ISBN-02', 2); INSERT INTO JPS_PREFERENCIA VALUES (86, 'ISBN-12', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (87, 'ISBN-01', 1); INSERT INTO JPS_PREFERENCIA VALUES (87, 'ISBN-14', 2); INSERT INTO JPS_PREFERENCIA VALUES (87, 'ISBN-16', 3);
+INSERT INTO JPS_PREFERENCIA VALUES (88, 'ISBN-09', 1); INSERT INTO JPS_PREFERENCIA VALUES (88, 'ISBN-11', 2); INSERT INTO JPS_PREFERENCIA VALUES (88, 'ISBN-07', 3);
+ 
+-- ============================================================
+-- 15. HISTORICO_MEMBRESIA
+-- ============================================================
+-- Club 1
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-01-10','YYYY-MM-DD'), 1,  1, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-01-10','YYYY-MM-DD'), 2,  1, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-01-10','YYYY-MM-DD'), 3,  1, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-01-10','YYYY-MM-DD'), 4,  1, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-01-10','YYYY-MM-DD'), 5,  1, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-01-10','YYYY-MM-DD'), 6,  1, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-01-10','YYYY-MM-DD'), 7,  1, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-01-10','YYYY-MM-DD'), 8,  1, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-01-10','YYYY-MM-DD'), 9,  1, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-01-10','YYYY-MM-DD'), 10, 1, 'activo', NULL, NULL);z
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-01-10','YYYY-MM-DD'), 11, 1, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-01-10','YYYY-MM-DD'), 12, 1, 'activo', NULL, NULL);
+-- Club 2
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2019-03-05','YYYY-MM-DD'), 13, 2, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2019-03-05','YYYY-MM-DD'), 14, 2, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2019-03-05','YYYY-MM-DD'), 15, 2, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2019-03-05','YYYY-MM-DD'), 16, 2, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2019-03-05','YYYY-MM-DD'), 17, 2, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2019-03-05','YYYY-MM-DD'), 18, 2, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2019-03-05','YYYY-MM-DD'), 19, 2, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2019-03-05','YYYY-MM-DD'), 20, 2, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2019-03-05','YYYY-MM-DD'), 21, 2, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2019-03-05','YYYY-MM-DD'), 22, 2, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2019-03-05','YYYY-MM-DD'), 23, 2, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2019-03-05','YYYY-MM-DD'), 24, 2, 'activo', NULL, NULL);
+-- Club 3
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2021-06-01','YYYY-MM-DD'), 25, 3, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2021-06-01','YYYY-MM-DD'), 26, 3, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2021-06-01','YYYY-MM-DD'), 27, 3, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2021-06-01','YYYY-MM-DD'), 28, 3, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2021-06-01','YYYY-MM-DD'), 29, 3, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2021-06-01','YYYY-MM-DD'), 30, 3, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2021-06-01','YYYY-MM-DD'), 31, 3, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2021-06-01','YYYY-MM-DD'), 32, 3, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2021-06-01','YYYY-MM-DD'), 33, 3, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2021-06-01','YYYY-MM-DD'), 34, 3, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2021-06-01','YYYY-MM-DD'), 35, 3, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2021-06-01','YYYY-MM-DD'), 36, 3, 'activo', NULL, NULL);
+-- Club 4
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2018-08-15','YYYY-MM-DD'), 37, 4, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2018-08-15','YYYY-MM-DD'), 38, 4, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2018-08-15','YYYY-MM-DD'), 39, 4, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2018-08-15','YYYY-MM-DD'), 40, 4, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2018-08-15','YYYY-MM-DD'), 41, 4, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2018-08-15','YYYY-MM-DD'), 42, 4, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2018-08-15','YYYY-MM-DD'), 43, 4, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2018-08-15','YYYY-MM-DD'), 44, 4, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2018-08-15','YYYY-MM-DD'), 45, 4, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2018-08-15','YYYY-MM-DD'), 46, 4, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2018-08-15','YYYY-MM-DD'), 47, 4, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2018-08-15','YYYY-MM-DD'), 48, 4, 'activo', NULL, NULL);
+-- Club 5
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2022-02-20','YYYY-MM-DD'), 49, 5, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2022-02-20','YYYY-MM-DD'), 50, 5, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2022-02-20','YYYY-MM-DD'), 51, 5, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2022-02-20','YYYY-MM-DD'), 52, 5, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2022-02-20','YYYY-MM-DD'), 53, 5, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2022-02-20','YYYY-MM-DD'), 54, 5, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2022-02-20','YYYY-MM-DD'), 55, 5, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2022-02-20','YYYY-MM-DD'), 56, 5, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2022-02-20','YYYY-MM-DD'), 57, 5, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2022-02-20','YYYY-MM-DD'), 58, 5, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2022-02-20','YYYY-MM-DD'), 59, 5, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2022-02-20','YYYY-MM-DD'), 60, 5, 'activo', NULL, NULL);
+-- Club 6
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2017-11-01','YYYY-MM-DD'), 61, 6, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2017-11-01','YYYY-MM-DD'), 62, 6, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2017-11-01','YYYY-MM-DD'), 63, 6, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2017-11-01','YYYY-MM-DD'), 64, 6, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2017-11-01','YYYY-MM-DD'), 65, 6, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2017-11-01','YYYY-MM-DD'), 66, 6, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2017-11-01','YYYY-MM-DD'), 67, 6, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2017-11-01','YYYY-MM-DD'), 68, 6, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2017-11-01','YYYY-MM-DD'), 69, 6, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2017-11-01','YYYY-MM-DD'), 70, 6, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2017-11-01','YYYY-MM-DD'), 71, 6, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2017-11-01','YYYY-MM-DD'), 72, 6, 'activo', NULL, NULL);
+-- Club 7
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2016-05-10','YYYY-MM-DD'), 73, 7, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2016-05-10','YYYY-MM-DD'), 74, 7, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2016-05-10','YYYY-MM-DD'), 75, 7, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2016-05-10','YYYY-MM-DD'), 76, 7, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2016-05-10','YYYY-MM-DD'), 77, 7, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2016-05-10','YYYY-MM-DD'), 78, 7, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2016-05-10','YYYY-MM-DD'), 79, 7, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2016-05-10','YYYY-MM-DD'), 80, 7, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2016-05-10','YYYY-MM-DD'), 81, 7, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2016-05-10','YYYY-MM-DD'), 82, 7, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2016-05-10','YYYY-MM-DD'), 83, 7, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2016-05-10','YYYY-MM-DD'), 84, 7, 'activo', NULL, NULL);
+-- Club 8
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-09-01','YYYY-MM-DD'), 85, 8, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-09-01','YYYY-MM-DD'), 86, 8, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-09-01','YYYY-MM-DD'), 87, 8, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-09-01','YYYY-MM-DD'), 88, 8, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-09-01','YYYY-MM-DD'), 89, 8, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-09-01','YYYY-MM-DD'), 90, 8, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-09-01','YYYY-MM-DD'), 91, 8, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-09-01','YYYY-MM-DD'), 92, 8, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-09-01','YYYY-MM-DD'), 93, 8, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-09-01','YYYY-MM-DD'), 94, 8, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-09-01','YYYY-MM-DD'), 95, 8, 'activo', NULL, NULL);
+INSERT INTO JPS_HISTORICO_MEMBRESIA VALUES (TO_DATE('2020-09-01','YYYY-MM-DD'), 96, 8, 'activo', NULL, NULL);
+ 
+-- ============================================================
+-- 16. MEMBRESIA_PAGO
+-- Clubes con cuota='si': 1, 3, 5, 6, 8
+-- ============================================================
+-- ============================================================
+-- 18. MEMBRESIA_PAGO
+-- ============================================================
+
+-- Club 1 (Cobran membresía)
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (1, TO_DATE('2020-01-10','YYYY-MM-DD'), 1, 1, TO_DATE('2020-01-15','YYYY-MM-DD'));
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (2, TO_DATE('2020-01-10','YYYY-MM-DD'), 2, 1, TO_DATE('2020-01-15','YYYY-MM-DD'));
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (3, TO_DATE('2020-01-10','YYYY-MM-DD'), 3, 1, TO_DATE('2020-01-15','YYYY-MM-DD'));
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (4, TO_DATE('2020-01-10','YYYY-MM-DD'), 4, 1, TO_DATE('2020-01-20','YYYY-MM-DD'));
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (5, TO_DATE('2020-01-10','YYYY-MM-DD'), 5, 1, TO_DATE('2020-01-20','YYYY-MM-DD'));
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (6, TO_DATE('2020-01-10','YYYY-MM-DD'), 6, 1, TO_DATE('2020-01-20','YYYY-MM-DD'));
+
+-- Club 3 (Cobran membresía)
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (7, TO_DATE('2021-06-01','YYYY-MM-DD'), 25, 3, TO_DATE('2021-06-05','YYYY-MM-DD'));
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (8, TO_DATE('2021-06-01','YYYY-MM-DD'), 26, 3, TO_DATE('2021-06-05','YYYY-MM-DD'));
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (9, TO_DATE('2021-06-01','YYYY-MM-DD'), 27, 3, TO_DATE('2021-06-07','YYYY-MM-DD'));
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (10, TO_DATE('2021-06-01','YYYY-MM-DD'), 28, 3, TO_DATE('2021-06-07','YYYY-MM-DD'));
+
+-- Club 5 (Cobran membresía)
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (11, TO_DATE('2022-02-20','YYYY-MM-DD'), 49, 5, TO_DATE('2022-02-22','YYYY-MM-DD'));
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (12, TO_DATE('2022-02-20','YYYY-MM-DD'), 50, 5, TO_DATE('2022-02-22','YYYY-MM-DD'));
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (13, TO_DATE('2022-02-20','YYYY-MM-DD'), 51, 5, TO_DATE('2022-02-25','YYYY-MM-DD'));
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (14, TO_DATE('2022-02-20','YYYY-MM-DD'), 52, 5, TO_DATE('2022-02-25','YYYY-MM-DD'));
+
+-- Club 6 (Cobran membresía)
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (15, TO_DATE('2017-11-01','YYYY-MM-DD'), 61, 6, TO_DATE('2017-11-05','YYYY-MM-DD'));
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (16, TO_DATE('2017-11-01','YYYY-MM-DD'), 62, 6, TO_DATE('2017-11-05','YYYY-MM-DD'));
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (17, TO_DATE('2017-11-01','YYYY-MM-DD'), 63, 6, TO_DATE('2017-11-08','YYYY-MM-DD'));
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (18, TO_DATE('2017-11-01','YYYY-MM-DD'), 64, 6, TO_DATE('2017-11-08','YYYY-MM-DD'));
+
+-- Club 8 (Cobran membresía)
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (19, TO_DATE('2020-09-01','YYYY-MM-DD'), 85, 8, TO_DATE('2020-09-05','YYYY-MM-DD'));
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (20, TO_DATE('2020-09-01','YYYY-MM-DD'), 86, 8, TO_DATE('2020-09-05','YYYY-MM-DD'));
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (21, TO_DATE('2020-09-01','YYYY-MM-DD'), 87, 8, TO_DATE('2020-09-08','YYYY-MM-DD'));
+INSERT INTO JPS_MEMBRESIA_PAGO VALUES (22, TO_DATE('2020-09-01','YYYY-MM-DD'), 88, 8, TO_DATE('2020-09-08','YYYY-MM-DD'));
+
+COMMIT;
+ 
+-- ============================================================
+-- 17. G_LC (fecha_inicio, idMiembro, idClub, idGrupo, fecha_fin)
+-- Moderador es miembro adulto del mismo club
+-- ============================================================
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2020-01-10','YYYY-MM-DD'), 1,  1, 1,  NULL); -- Hans      → adultos  Club1
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2020-01-10','YYYY-MM-DD'), 2,  1, 2,  NULL); -- Anna      → jovenes  Club1
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2020-01-10','YYYY-MM-DD'), 3,  1, 3,  NULL); -- Erik      → niños    Club1
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2019-03-05','YYYY-MM-DD'), 13, 2, 4,  NULL); -- Franz     → adultos  Club2
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2019-03-05','YYYY-MM-DD'), 14, 2, 5,  NULL); -- Helga     → jovenes  Club2
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2019-03-05','YYYY-MM-DD'), 15, 2, 6,  NULL); -- Otto      → niños    Club2
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2021-06-01','YYYY-MM-DD'), 25, 3, 7,  NULL); -- Oliver    → adultos  Club3
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2021-06-01','YYYY-MM-DD'), 26, 3, 8,  NULL); -- Charlotte → jovenes  Club3
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2021-06-01','YYYY-MM-DD'), 27, 3, 9,  NULL); -- William   → niños    Club3
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2018-08-15','YYYY-MM-DD'), 37, 4, 10, NULL); -- Thomas    → adultos  Club4
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2018-08-15','YYYY-MM-DD'), 38, 4, 11, NULL); -- Jessica   → jovenes  Club4
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2018-08-15','YYYY-MM-DD'), 39, 4, 12, NULL); -- Daniel    → niños    Club4
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2022-02-20','YYYY-MM-DD'), 49, 5, 13, NULL); -- Alexander → adultos  Club5
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2022-02-20','YYYY-MM-DD'), 50, 5, 14, NULL); -- Chloe     → jovenes  Club5
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2022-02-20','YYYY-MM-DD'), 51, 5, 15, NULL); -- Benjamin  → niños    Club5
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2017-11-01','YYYY-MM-DD'), 61, 6, 16, NULL); -- Arjun     → adultos  Club6
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2017-11-01','YYYY-MM-DD'), 62, 6, 17, NULL); -- Priya     → jovenes  Club6
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2017-11-01','YYYY-MM-DD'), 63, 6, 18, NULL); -- Vikram    → niños    Club6
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2016-05-10','YYYY-MM-DD'), 73, 7, 19, NULL); -- Siddharth → adultos  Club7
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2016-05-10','YYYY-MM-DD'), 74, 7, 20, NULL); -- Pooja     → jovenes  Club7
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2016-05-10','YYYY-MM-DD'), 75, 7, 21, NULL); -- Karan     → niños    Club7
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2020-09-01','YYYY-MM-DD'), 85, 8, 22, NULL); -- Raj       → adultos  Club8
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2020-09-01','YYYY-MM-DD'), 86, 8, 23, NULL); -- Sunita    → jovenes  Club8
+INSERT INTO JPS_G_LC VALUES (TO_DATE('2020-09-01','YYYY-MM-DD'), 87, 8, 24, NULL); -- Nikhil    → niños    Club8
+ 
+-- ============================================================
+-- 18. CALENDARIO_MES_REUNION
+-- ============================================================
+INSERT INTO JPS_CALENDARIO_MES_REUNION VALUES (TO_DATE('2024-01-08','YYYY-MM-DD'), 1, 1,  'ISBN-01', TO_DATE('2020-01-10','YYYY-MM-DD'), 1,  'si', 'Se discutio la primera parte de Dune, el mundo de Arrakis','La politica de las familias nobles',4);
+INSERT INTO JPS_CALENDARIO_MES_REUNION VALUES (TO_DATE('2024-01-15','YYYY-MM-DD'), 1, 1,  'ISBN-01', TO_DATE('2020-01-10','YYYY-MM-DD'), 1,  'si', 'Analisis del personaje de Paul Atreides y su destino', 'La relacion con los Fremen', 5);
+INSERT INTO JPS_CALENDARIO_MES_REUNION VALUES (TO_DATE('2024-01-10','YYYY-MM-DD'), 1, 2,  'ISBN-16', TO_DATE('2020-01-10','YYYY-MM-DD'), 2,  'si', 'Inicio del viaje de Eragon y el encuentro con Saphira','El mundo de Alagaesia',4);
+INSERT INTO JPS_CALENDARIO_MES_REUNION VALUES (TO_DATE('2024-01-09','YYYY-MM-DD'), 2, 4,  'ISBN-08', TO_DATE('2019-03-05','YYYY-MM-DD'), 13, 'si', 'La revolucion cognitiva y el surgimiento del Homo sapiens', 'Como el lenguaje cambio todo',5);
+INSERT INTO JPS_CALENDARIO_MES_REUNION VALUES (TO_DATE('2024-01-08','YYYY-MM-DD'), 3, 7,  'ISBN-05', TO_DATE('2021-06-01','YYYY-MM-DD'), 25, 'si', 'El miedo como tema central de la obra de King', 'Pennywise como simbolo del mal colectivo', 4);
+INSERT INTO JPS_CALENDARIO_MES_REUNION VALUES (TO_DATE('2024-01-09','YYYY-MM-DD'), 4, 10, 'ISBN-04', TO_DATE('2018-08-15','YYYY-MM-DD'), 37, 'si', 'Los narradores no confiables como recurso literario', 'La perspectiva de Rachel y sus contradicciones', 4);
+INSERT INTO JPS_CALENDARIO_MES_REUNION VALUES (TO_DATE('2024-01-08','YYYY-MM-DD'), 5, 13, 'ISBN-10', TO_DATE('2022-02-20','YYYY-MM-DD'), 49, 'si', 'La amistad entre Amir y Hassan en el contexto de Afganistan', 'La culpa y la busqueda de redencion', 5);
+INSERT INTO JPS_CALENDARIO_MES_REUNION VALUES (TO_DATE('2024-01-08','YYYY-MM-DD'), 6, 16, 'ISBN-08', TO_DATE('2017-11-01','YYYY-MM-DD'), 61, 'si', 'El impacto de las religiones y mitos en la sociedad humana', 'La construccion de realidades intersubjetivas', 5);
+INSERT INTO JPS_CALENDARIO_MES_REUNION VALUES (TO_DATE('2024-01-11','YYYY-MM-DD'), 7, 19, 'ISBN-09', TO_DATE('2016-05-10','YYYY-MM-DD'), 73, 'si', 'Lisbeth Salander como personaje revolucionario en el genero policial', 'La critica social de Larsson a traves del crimen', 4);
+INSERT INTO JPS_CALENDARIO_MES_REUNION VALUES (TO_DATE('2024-01-09','YYYY-MM-DD'), 8, 22, 'ISBN-15', TO_DATE('2020-09-01','YYYY-MM-DD'), 85, 'si', 'Los roles de genero en la epoca victoriana a traves de las hermanas March', 'La independencia de Jo como personaje adelantado a su tiempo', 5);
+ 
+-- ============================================================
+-- 19. INASISTENCIA
+-- (fecha, idClub, idGrupo, ISBN, fecha_inicio, idMiembro, estatus)
+-- ============================================================
+-- ============================================================
+-- 19. INASISTENCIA (CORREGIDO CON DATOS REALES DE JPS_G_LC Y CALENDARIO)
+-- ============================================================
+INSERT INTO JPS_INASISTENCIA VALUES (TO_DATE('2024-01-08','YYYY-MM-DD'), 1, 1,  'ISBN-01', TO_DATE('2020-01-10','YYYY-MM-DD'), 1,  'justificada');
+INSERT INTO JPS_INASISTENCIA VALUES (TO_DATE('2024-01-15','YYYY-MM-DD'), 1, 1,  'ISBN-01', TO_DATE('2020-01-10','YYYY-MM-DD'), 1,  'injustificada');
+INSERT INTO JPS_INASISTENCIA VALUES (TO_DATE('2024-01-10','YYYY-MM-DD'), 1, 2,  'ISBN-16', TO_DATE('2020-01-10','YYYY-MM-DD'), 2,  'justificada');
+INSERT INTO JPS_INASISTENCIA VALUES (TO_DATE('2024-01-09','YYYY-MM-DD'), 2, 4,  'ISBN-08', TO_DATE('2019-03-05','YYYY-MM-DD'), 13, 'injustificada');
+INSERT INTO JPS_INASISTENCIA VALUES (TO_DATE('2024-01-08','YYYY-MM-DD'), 3, 7,  'ISBN-05', TO_DATE('2021-06-01','YYYY-MM-DD'), 25, 'justificada');
+INSERT INTO JPS_INASISTENCIA VALUES (TO_DATE('2024-01-09','YYYY-MM-DD'), 4, 10, 'ISBN-04', TO_DATE('2018-08-15','YYYY-MM-DD'), 37, 'injustificada');
+INSERT INTO JPS_INASISTENCIA VALUES (TO_DATE('2024-01-08','YYYY-MM-DD'), 5, 13, 'ISBN-10', TO_DATE('2022-02-20','YYYY-MM-DD'), 49, 'justificada');
+INSERT INTO JPS_INASISTENCIA VALUES (TO_DATE('2024-01-08','YYYY-MM-DD'), 6, 16, 'ISBN-08', TO_DATE('2017-11-01','YYYY-MM-DD'), 61, 'injustificada');
+INSERT INTO JPS_INASISTENCIA VALUES (TO_DATE('2024-01-11','YYYY-MM-DD'), 7, 19, 'ISBN-09', TO_DATE('2016-05-10','YYYY-MM-DD'), 73, 'justificada');
+INSERT INTO JPS_INASISTENCIA VALUES (TO_DATE('2024-01-09','YYYY-MM-DD'), 8, 22, 'ISBN-15', TO_DATE('2020-09-01','YYYY-MM-DD'), 85, 'injustificada');
+
+COMMIT;
+-- ============================================================
+-- 20. OBRA_ACTUADA
+-- (idObra, ISBN, idClub, nombre, descripcion, costo_entrada, activo)
+-- ============================================================
+INSERT INTO JPS_OBRA_ACTUADA VALUES (1, 'ISBN-15', 1, 'Mujercitas en Berlin', 'Adaptacion teatral de Mujercitas ambientada en la Alemania de posguerra', 15.00, 'si');
+INSERT INTO JPS_OBRA_ACTUADA VALUES (2, 'ISBN-09', 2, 'La Investigacion de Lisbeth', 'Obra de misterio basada en Los Hombres que no Amaban a las Mujeres', 12.00, 'si');
+INSERT INTO JPS_OBRA_ACTUADA VALUES (3, 'ISBN-05', 3, 'El Payaso de Derry', 'Terror teatral inspirado en It de Stephen King', 20.00, 'si');
+INSERT INTO JPS_OBRA_ACTUADA VALUES (4, 'ISBN-04', 4, 'El Tren de los Secretos', 'Thriller psicologico basado en La Chica del Tren', 18.00, 'si');
+INSERT INTO JPS_OBRA_ACTUADA VALUES (5, 'ISBN-10', 5, 'Cometas Bajo el Sol', 'Drama basado en Cometas en el Cielo adaptado al escenario australiano', 22.00, 'si');
+INSERT INTO JPS_OBRA_ACTUADA VALUES (6, 'ISBN-08', 6, 'El Origen del Sapiens', 'Obra educativa basada en Sapiens de Harari', 10.00, 'si');
+INSERT INTO JPS_OBRA_ACTUADA VALUES (7, 'ISBN-01', 7, 'Dune: La Profecia', 'Epopeya teatral basada en el universo de Dune de Frank Herbert', 25.00, 'si');
+INSERT INTO JPS_OBRA_ACTUADA VALUES (8, 'ISBN-06', 8, 'La Geisha del Taj', 'Drama basado en Memorias de una Geisha adaptado al contexto indio', 16.00, 'si');
+INSERT INTO JPS_OBRA_ACTUADA VALUES (9, 'ISBN-13', 1, 'Un Mundo Feliz en Escena', 'Adaptacion distopica de Un Mundo Feliz de Aldous Huxley para el publico berlines', 14.00, 'no');
+ 
+-- ============================================================
+-- 21. ELENCO
+-- ============================================================
+INSERT INTO JPS_ELENCO VALUES (1,  1, 'ISBN-15', 1);
+INSERT INTO JPS_ELENCO VALUES (2,  1, 'ISBN-15', 1);
+INSERT INTO JPS_ELENCO VALUES (3,  1, 'ISBN-15', 1);
+INSERT INTO JPS_ELENCO VALUES (5,  1, 'ISBN-15', 1);
+INSERT INTO JPS_ELENCO VALUES (13, 2, 'ISBN-09', 2);
+INSERT INTO JPS_ELENCO VALUES (14, 2, 'ISBN-09', 2);
+INSERT INTO JPS_ELENCO VALUES (15, 2, 'ISBN-09', 2);
+INSERT INTO JPS_ELENCO VALUES (17, 2, 'ISBN-09', 2);
+INSERT INTO JPS_ELENCO VALUES (25, 3, 'ISBN-05', 3);
+INSERT INTO JPS_ELENCO VALUES (26, 3, 'ISBN-05', 3);
+INSERT INTO JPS_ELENCO VALUES (27, 3, 'ISBN-05', 3);
+INSERT INTO JPS_ELENCO VALUES (29, 3, 'ISBN-05', 3);
+INSERT INTO JPS_ELENCO VALUES (37, 4, 'ISBN-04', 4);
+INSERT INTO JPS_ELENCO VALUES (38, 4, 'ISBN-04', 4);
+INSERT INTO JPS_ELENCO VALUES (39, 4, 'ISBN-04', 4);
+INSERT INTO JPS_ELENCO VALUES (41, 4, 'ISBN-04', 4);
+INSERT INTO JPS_ELENCO VALUES (49, 5, 'ISBN-10', 5);
+INSERT INTO JPS_ELENCO VALUES (50, 5, 'ISBN-10', 5);
+INSERT INTO JPS_ELENCO VALUES (51, 5, 'ISBN-10', 5);
+INSERT INTO JPS_ELENCO VALUES (53, 5, 'ISBN-10', 5);
+INSERT INTO JPS_ELENCO VALUES (61, 6, 'ISBN-08', 6);
+INSERT INTO JPS_ELENCO VALUES (62, 6, 'ISBN-08', 6);
+INSERT INTO JPS_ELENCO VALUES (63, 6, 'ISBN-08', 6);
+INSERT INTO JPS_ELENCO VALUES (65, 6, 'ISBN-08', 6);
+INSERT INTO JPS_ELENCO VALUES (73, 7, 'ISBN-01', 7);
+INSERT INTO JPS_ELENCO VALUES (74, 7, 'ISBN-01', 7);
+INSERT INTO JPS_ELENCO VALUES (75, 7, 'ISBN-01', 7);
+INSERT INTO JPS_ELENCO VALUES (77, 7, 'ISBN-01', 7);
+INSERT INTO JPS_ELENCO VALUES (85, 8, 'ISBN-06', 8);
+INSERT INTO JPS_ELENCO VALUES (86, 8, 'ISBN-06', 8);
+INSERT INTO JPS_ELENCO VALUES (87, 8, 'ISBN-06', 8);
+INSERT INTO JPS_ELENCO VALUES (89, 8, 'ISBN-06', 8);
+ 
+-- ============================================================
+-- 22. PRESENTACION
+-- ============================================================
+INSERT INTO JPS_PRESENTACION VALUES (TO_DATE('2024-02-10','YYYY-MM-DD'), 1, 'ISBN-15', 1, 80,  '5');
+INSERT INTO JPS_PRESENTACION VALUES (TO_DATE('2024-02-17','YYYY-MM-DD'), 1, 'ISBN-15', 1, 65,  '4');
+INSERT INTO JPS_PRESENTACION VALUES (TO_DATE('2024-02-15','YYYY-MM-DD'), 2, 'ISBN-09', 2, 55,  '4');
+INSERT INTO JPS_PRESENTACION VALUES (TO_DATE('2024-02-22','YYYY-MM-DD'), 2, 'ISBN-09', 2, 48,  '5');
+INSERT INTO JPS_PRESENTACION VALUES (TO_DATE('2024-02-12','YYYY-MM-DD'), 3, 'ISBN-05', 3, 100, '5');
+INSERT INTO JPS_PRESENTACION VALUES (TO_DATE('2024-02-19','YYYY-MM-DD'), 3, 'ISBN-05', 3, 92,  '4');
+INSERT INTO JPS_PRESENTACION VALUES (TO_DATE('2024-02-13','YYYY-MM-DD'), 4, 'ISBN-04', 4, 70,  '4');
+INSERT INTO JPS_PRESENTACION VALUES (TO_DATE('2024-02-20','YYYY-MM-DD'), 4, 'ISBN-04', 4, 75,  '5');
+INSERT INTO JPS_PRESENTACION VALUES (TO_DATE('2024-02-14','YYYY-MM-DD'), 5, 'ISBN-10', 5, 90,  '5');
+INSERT INTO JPS_PRESENTACION VALUES (TO_DATE('2024-02-21','YYYY-MM-DD'), 5, 'ISBN-10', 5, 85,  '4');
+INSERT INTO JPS_PRESENTACION VALUES (TO_DATE('2024-02-11','YYYY-MM-DD'), 6, 'ISBN-08', 6, 60,  '4');
+INSERT INTO JPS_PRESENTACION VALUES (TO_DATE('2024-02-18','YYYY-MM-DD'), 6, 'ISBN-08', 6, 58,  '5');
+INSERT INTO JPS_PRESENTACION VALUES (TO_DATE('2024-02-16','YYYY-MM-DD'), 7, 'ISBN-01', 7, 110, '5');
+INSERT INTO JPS_PRESENTACION VALUES (TO_DATE('2024-02-23','YYYY-MM-DD'), 7, 'ISBN-01', 7, 105, '5');
+INSERT INTO JPS_PRESENTACION VALUES (TO_DATE('2024-02-10','YYYY-MM-DD'), 8, 'ISBN-06', 8, 75,  '4');
+INSERT INTO JPS_PRESENTACION VALUES (TO_DATE('2024-02-17','YYYY-MM-DD'), 8, 'ISBN-06', 8, 80,  '5');
+ 
+-- ============================================================
+-- 23. MEJOR_ACTOR
+-- ============================================================
+INSERT INTO JPS_MEJOR_ACTOR VALUES (1,  1, 'ISBN-15', 1, TO_DATE('2024-02-10','YYYY-MM-DD'));
+INSERT INTO JPS_MEJOR_ACTOR VALUES (2,  1, 'ISBN-15', 1, TO_DATE('2024-02-17','YYYY-MM-DD'));
+INSERT INTO JPS_MEJOR_ACTOR VALUES (13, 2, 'ISBN-09', 2, TO_DATE('2024-02-15','YYYY-MM-DD'));
+INSERT INTO JPS_MEJOR_ACTOR VALUES (14, 2, 'ISBN-09', 2, TO_DATE('2024-02-22','YYYY-MM-DD'));
+INSERT INTO JPS_MEJOR_ACTOR VALUES (25, 3, 'ISBN-05', 3, TO_DATE('2024-02-12','YYYY-MM-DD'));
+INSERT INTO JPS_MEJOR_ACTOR VALUES (26, 3, 'ISBN-05', 3, TO_DATE('2024-02-19','YYYY-MM-DD'));
+INSERT INTO JPS_MEJOR_ACTOR VALUES (37, 4, 'ISBN-04', 4, TO_DATE('2024-02-13','YYYY-MM-DD'));
+INSERT INTO JPS_MEJOR_ACTOR VALUES (38, 4, 'ISBN-04', 4, TO_DATE('2024-02-20','YYYY-MM-DD'));
+INSERT INTO JPS_MEJOR_ACTOR VALUES (49, 5, 'ISBN-10', 5, TO_DATE('2024-02-14','YYYY-MM-DD'));
+INSERT INTO JPS_MEJOR_ACTOR VALUES (50, 5, 'ISBN-10', 5, TO_DATE('2024-02-21','YYYY-MM-DD'));
+INSERT INTO JPS_MEJOR_ACTOR VALUES (61, 6, 'ISBN-08', 6, TO_DATE('2024-02-11','YYYY-MM-DD'));
+INSERT INTO JPS_MEJOR_ACTOR VALUES (62, 6, 'ISBN-08', 6, TO_DATE('2024-02-18','YYYY-MM-DD'));
+INSERT INTO JPS_MEJOR_ACTOR VALUES (73, 7, 'ISBN-01', 7, TO_DATE('2024-02-16','YYYY-MM-DD'));
+INSERT INTO JPS_MEJOR_ACTOR VALUES (74, 7, 'ISBN-01', 7, TO_DATE('2024-02-23','YYYY-MM-DD'));
+INSERT INTO JPS_MEJOR_ACTOR VALUES (85, 8, 'ISBN-06', 8, TO_DATE('2024-02-10','YYYY-MM-DD'));
+INSERT INTO JPS_MEJOR_ACTOR VALUES (86, 8, 'ISBN-06', 8, TO_DATE('2024-02-17','YYYY-MM-DD'));
+
+
+
+======================================
+--  INDICES
+======================================
+
+CREATE INDEX JPS_idx_pais_nombre        ON JPS_PAIS(nombre);
+CREATE INDEX JPS_idx_ciudad_nombre      ON JPS_CIUDAD(nombre);
+CREATE INDEX JPS_idx_institucion_nombre ON JPS_INSTITUCION(nombre);
+CREATE INDEX JPS_idx_club_nombre        ON JPS_CLUB_LECTURA(nombre);
+CREATE INDEX JPS_idx_libro_titulo       ON JPS_LIBRO(titulo_original);
+CREATE INDEX JPS_idx_obra_nombre        ON JPS_OBRA_ACTUADA(nombre);
+CREATE INDEX JPS_idx_autor_nombre_completo ON JPS_AUTOR(primer_apellido, primer_nombre);
+CREATE UNIQUE INDEX JPS_idx_idioma_nombre ON JPS_IDIOMA(nombre);
+CREATE UNIQUE INDEX JPS_idx_miembro_doc   ON JPS_MIEMBRO(doc_identidad);
+CREATE UNIQUE INDEX JPS_idx_miembro_email ON JPS_MIEMBRO(email);
+CREATE UNIQUE INDEX JPS_idx_repres_doc    ON JPS_REPRESENTANTE(doc_identidad);
+
+
+-- ============================================================
+--  PROYECTO: CLUB DE LECTURA
+--  ENTREGA 2 PARTE I - VISTAS Y FUNCIONES
+--  Prefijo: JPS
+-- ============================================================
+ 
+SET SERVEROUTPUT ON;
+ 
+-- ============================================================
+-- LIMPIEZA PREVIA DE OBJETOS
+-- ============================================================
+BEGIN
+    BEGIN EXECUTE IMMEDIATE 'DROP FUNCTION JPS_FN_CONVERSION_MONETARIA'; EXCEPTION WHEN OTHERS THEN NULL; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP FUNCTION JPS_FN_EDAD_ANTIGUEDAD';      EXCEPTION WHEN OTHERS THEN NULL; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP FUNCTION JPS_FN_PORC_PART_MENSUAL';    EXCEPTION WHEN OTHERS THEN NULL; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP FUNCTION JPS_FN_PORC_PART_BIMESTRE';   EXCEPTION WHEN OTHERS THEN NULL; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP VIEW JPS_V_MIEMBROS_ACTIVOS';          EXCEPTION WHEN OTHERS THEN NULL; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP VIEW JPS_V_TASA_CAMBIO';               EXCEPTION WHEN OTHERS THEN NULL; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP VIEW JPS_V_REUNIONES_POR_GRUPO';       EXCEPTION WHEN OTHERS THEN NULL; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP VIEW JPS_V_PARTICIPACION_MENSUAL';     EXCEPTION WHEN OTHERS THEN NULL; END;
+    BEGIN EXECUTE IMMEDIATE 'DROP VIEW JPS_V_PARTICIPACION_BIMESTRAL';   EXCEPTION WHEN OTHERS THEN NULL; END;
+END;
+/
+ 
+ 
+-- ============================================================
+-- VISTAS
+-- ============================================================
+ 
+-- -------------------------------------------------------
+-- VISTA 1: JPS_V_TASA_CAMBIO
+-- -------------------------------------------------------
+CREATE OR REPLACE VIEW JPS_V_TASA_CAMBIO AS
+SELECT p.idPais,
+       p.nombre      AS nombre_pais,
+       p.moneda,
+       CASE p.moneda
+           WHEN 'Dolar'     THEN 1.00
+           WHEN 'Euro'      THEN 0.92
+           WHEN 'Libra'     THEN 0.79
+           WHEN 'Real'      THEN 5.05
+           WHEN 'Sequel'    THEN 3.70
+           WHEN 'Corona'    THEN 10.60
+           WHEN 'Dolar AUD' THEN 1.54
+           WHEN 'Peso'      THEN 900.00
+           WHEN 'Rupia'     THEN 83.50
+           ELSE 1.00
+       END AS tasa_a_usd
+FROM JPS_PAIS p;
+ 
+-- -------------------------------------------------------
+-- VISTA 2: JPS_V_MIEMBROS_ACTIVOS
+-- -------------------------------------------------------
+CREATE OR REPLACE VIEW JPS_V_MIEMBROS_ACTIVOS AS
+SELECT
+    m.idMiembro,
+    m.primer_nombre || ' ' || m.primer_apellido || ' ' || m.segundo_apellido AS nombre_completo,
+    m.fecha_nacimiento,
+    gl.idGrupo,
+    gl.idClub,
+    gl.tipo                                   AS tipo_grupo,
+    cl.nombre                                 AS nombre_club,
+    hm.fecha_inicio                           AS fecha_ingreso_club,
+    hm.estatus
+FROM JPS_MIEMBRO      m
+JOIN JPS_HISTORICO_MEMBRESIA hm ON m.idMiembro = hm.idMiembro
+JOIN JPS_GRUPO_LECTURA       gl ON hm.idClub    = gl.idClub
+JOIN JPS_CLUB_LECTURA        cl ON gl.idClub    = cl.idClub
+WHERE hm.estatus = 'activo'
+  AND hm.fecha_fin IS NULL;
+ 
+-- -------------------------------------------------------
+-- VISTA 3: JPS_V_REUNIONES_POR_GRUPO
+-- -------------------------------------------------------
+CREATE OR REPLACE VIEW JPS_V_REUNIONES_POR_GRUPO AS
+SELECT
+    cmr.idGrupo,
+    cmr.idClub,
+    EXTRACT(YEAR  FROM cmr.fecha) AS anio,
+    EXTRACT(MONTH FROM cmr.fecha) AS mes,
+    COUNT(*) AS total_reuniones
+FROM JPS_CALENDARIO_MES_REUNION cmr
+WHERE cmr.realizada = 'si'
+GROUP BY cmr.idGrupo, cmr.idClub,
+         EXTRACT(YEAR  FROM cmr.fecha),
+         EXTRACT(MONTH FROM cmr.fecha);
+ 
+-- -------------------------------------------------------
+-- VISTA 4: JPS_V_PARTICIPACION_MENSUAL
+-- -------------------------------------------------------
+CREATE OR REPLACE VIEW JPS_V_PARTICIPACION_MENSUAL AS
+SELECT
+    rg.idGrupo,
+    rg.idClub,
+    gl.tipo                              AS tipo_grupo,
+    rg.anio,
+    rg.mes,
+    rg.total_reuniones,
+    (SELECT COUNT(DISTINCT hm2.idMiembro)
+     FROM JPS_HISTORICO_MEMBRESIA hm2
+     WHERE hm2.idClub   = rg.idClub
+       AND hm2.estatus  = 'activo'
+       AND hm2.fecha_fin IS NULL) AS total_miembros,
+    -- Inasistencias de ese grupo en ese mes
+    (SELECT COUNT(*)
+     FROM JPS_INASISTENCIA i
+     WHERE i.idGrupo = rg.idGrupo
+       AND i.idClub  = rg.idClub
+       AND EXTRACT(YEAR  FROM i.fecha) = rg.anio
+       AND EXTRACT(MONTH FROM i.fecha) = rg.mes
+    ) AS total_inasistencias
+FROM JPS_V_REUNIONES_POR_GRUPO rg
+JOIN JPS_GRUPO_LECTURA gl ON rg.idGrupo = gl.idGrupo
+                          AND rg.idClub  = gl.idClub;
+ 
+-- -------------------------------------------------------
+-- VISTA 5: JPS_V_PARTICIPACION_BIMESTRAL
+-- -------------------------------------------------------
+CREATE OR REPLACE VIEW JPS_V_PARTICIPACION_BIMESTRAL AS
+SELECT
+    m.idMiembro,
+    m.primer_nombre || ' ' || m.primer_apellido AS nombre_miembro,
+    hm.idClub,
+    hm.idClub AS idGrupo_club,
+    -- Bimestre: 1=(ene-feb), 2=(mar-abr), 3=(may-jun),
+    --           4=(jul-ago), 5=(sep-oct), 6=(nov-dic)
+    EXTRACT(YEAR FROM hm.fecha_inicio)            AS anio,
+    CEIL(EXTRACT(MONTH FROM hm.fecha_inicio) / 2) AS bimestre,
+    -- Reuniones totales del grupo en ese bimestre
+    (SELECT COUNT(*)
+     FROM JPS_CALENDARIO_MES_REUNION cmr2
+     JOIN JPS_G_LC glc2 ON cmr2.idGrupo = glc2.idGrupo
+                        AND cmr2.idClub  = glc2.idClub
+     WHERE glc2.idMiembro   = m.idMiembro
+       AND glc2.idClub       = hm.idClub
+       AND cmr2.realizada    = 'si'
+       AND EXTRACT(YEAR FROM cmr2.fecha)                   = EXTRACT(YEAR FROM hm.fecha_inicio)
+       AND CEIL(EXTRACT(MONTH FROM cmr2.fecha) / 2)        = CEIL(EXTRACT(MONTH FROM hm.fecha_inicio) / 2)
+    ) AS reuniones_bimestre,
+    (SELECT COUNT(*)
+     FROM JPS_INASISTENCIA i2
+     WHERE i2.idMiembro = m.idMiembro
+       AND EXTRACT(YEAR FROM i2.fecha)                   = EXTRACT(YEAR FROM hm.fecha_inicio)
+       AND CEIL(EXTRACT(MONTH FROM i2.fecha) / 2)        = CEIL(EXTRACT(MONTH FROM hm.fecha_inicio) / 2)
+    ) AS inasistencias_bimestre
+FROM JPS_MIEMBRO             m
+JOIN JPS_HISTORICO_MEMBRESIA hm ON m.idMiembro = hm.idMiembro
+WHERE hm.estatus = 'activo';
+ 
+ 
+-- ============================================================
+-- FUNCION 1: JPS_FN_CONVERSION_MONETARIA
+-- ============================================================
+create or replace NONEDITIONABLE FUNCTION JPS_FN_CONVERSION_MONETARIA(
+    p_monto       IN NUMBER,
+    p_moneda_orig IN VARCHAR2,
+    p_moneda_dest IN VARCHAR2
+) RETURN NUMBER IS
+    v_tasa_orig NUMBER;
+    v_tasa_dest NUMBER;
+    v_monto_usd NUMBER;
+BEGIN
+    -- Obtener tasa de la moneda origen (cuántas unidades = 1 USD)
+    SELECT tasa_a_usd INTO v_tasa_orig
+    FROM JPS_V_TASA_CAMBIO
+    WHERE UPPER(moneda) = UPPER(p_moneda_orig)
+      AND ROWNUM = 1;
+
+    -- Obtener tasa de la moneda destino
+    SELECT tasa_a_usd INTO v_tasa_dest
+    FROM JPS_V_TASA_CAMBIO
+    WHERE UPPER(moneda) = UPPER(p_moneda_dest)
+      AND ROWNUM = 1;
+
+    -- Convertir: origen → USD → destino
+    v_monto_usd := p_monto / v_tasa_orig;        -- monto en USD
+    RETURN ROUND(v_monto_usd * v_tasa_dest, 2);   -- monto en destino
+
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('ERROR: Moneda no encontrada. Verifique los nombres de moneda.');
+        RETURN NULL;
+    WHEN ZERO_DIVIDE THEN
+        DBMS_OUTPUT.PUT_LINE('ERROR: Tasa de cambio cero. Revise JPS_V_TASA_CAMBIO.');
+        RETURN NULL;
+END JPS_FN_CONVERSION_MONETARIA;
+
+
+ 
+-- ============================================================
+-- FUNCIÓN 2: JPS_FN_EDAD_ANTIGUEDAD
+-- ============================================================
+create or replace NONEDITIONABLE FUNCTION JPS_FN_EDAD_ANTIGUEDAD(
+    p_idMiembro IN NUMBER,
+    p_idClub    IN NUMBER
+) RETURN VARCHAR2 IS
+    v_fecha_nac    DATE;
+    v_fecha_inicio DATE;
+    v_edad         NUMBER;
+    v_antiguedad   NUMBER;
+    v_resultado    VARCHAR2(200);
+BEGIN
+    -- 1. Calcular Edad
+    SELECT fecha_nacimiento INTO v_fecha_nac
+    FROM JPS_MIEMBRO
+    WHERE idMiembro = p_idMiembro;
+
+    v_edad := TRUNC(MONTHS_BETWEEN(SYSDATE, v_fecha_nac) / 12);
+
+    -- 2. Calcular Antigüedad (registro activo más reciente)
+    SELECT MAX(fecha_inicio) INTO v_fecha_inicio
+    FROM JPS_HISTORICO_MEMBRESIA
+    WHERE idMiembro = p_idMiembro
+      AND idClub    = p_idClub
+      AND estatus   = 'activo'
+      AND fecha_fin IS NULL;
+
+    -- 3. Unir ambos resultados en un solo texto
+    IF v_fecha_inicio IS NULL THEN
+        v_resultado := v_edad || ' años | Antigüedad: El miembro no está activo en este club';
+    ELSE
+        v_antiguedad := TRUNC(MONTHS_BETWEEN(SYSDATE, v_fecha_inicio) / 12);
+        v_resultado := v_edad || ' años | Antigüedad: ' || v_antiguedad || ' año(s)';
+    END IF;
+
+    RETURN v_resultado;
+
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        RETURN 'ERROR: Miembro no encontrado en la base de datos.';
+    WHEN OTHERS THEN
+        RETURN 'ERROR INESPERADO: ' || SQLERRM;
+END JPS_FN_EDAD_ANTIGUEDAD;
+
+ 
+-- ============================================================
+-- FUNCION 3: JPS_FN_PORC_PART_MENSUAL
+-- ============================================================
+create or replace NONEDITIONABLE FUNCTION JPS_FN_PORC_PART_MENSUAL(
+    p_tipo_grupo IN VARCHAR2,
+    p_mes        IN NUMBER,
+    p_anio       IN NUMBER
+) RETURN NUMBER IS
+    v_total_grupos          NUMBER := 0;
+    v_suma_porcentaje       NUMBER := 0;
+    v_porcentaje            NUMBER := 0;
+    v_inasistencias         NUMBER := 0;
+    v_asistencias_esperadas NUMBER := 0;
+BEGIN
+    -- Recorre todos los grupos del tipo indicado con reuniones en ese mes/año
+    FOR r IN (
+        SELECT pm.total_reuniones,
+               pm.total_inasistencias
+        FROM   JPS_V_PARTICIPACION_MENSUAL pm
+        WHERE  UPPER(pm.tipo_grupo) = UPPER(p_tipo_grupo)
+          AND  pm.mes               = p_mes
+          AND  pm.anio              = p_anio
+          AND  pm.total_reuniones   > 0
+    ) LOOP
+        -- 1. Manejo de NULLs: Si nadie faltó, las inasistencias son 0
+        v_inasistencias := NVL(r.total_inasistencias, 0);
+
+        -- 2. Corrección Matemática: Asumimos 5 miembros por grupo para sacar un % real
+        v_asistencias_esperadas := r.total_reuniones * 5;
+
+        -- Seguro para que la inasistencia nunca supere el 100%
+        IF v_inasistencias > v_asistencias_esperadas THEN
+            v_inasistencias := v_asistencias_esperadas;
+        END IF;
+
+        -- 3. Fórmula de participación del grupo
+        v_suma_porcentaje := v_suma_porcentaje +
+            ((v_asistencias_esperadas - v_inasistencias) / v_asistencias_esperadas) * 100;
+
+        v_total_grupos := v_total_grupos + 1;
+    END LOOP;
+
+    -- Si no hubo reuniones para ese grupo, salir limpiamente
+    IF v_total_grupos = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('INFO: No hay reuniones registradas para el tipo "' ||
+                             p_tipo_grupo || '" en ' || p_mes || '/' || p_anio);
+        RETURN 0;
+    END IF;
+
+    -- Promedio de participación entre todos los grupos del tipo
+    v_porcentaje := ROUND(v_suma_porcentaje / v_total_grupos, 2);
+    RETURN v_porcentaje;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('ERROR en JPS_FN_PORC_PART_MENSUAL: ' || SQLERRM);
+        RETURN NULL;
+END JPS_FN_PORC_PART_MENSUAL;
+
+ 
+-- ============================================================
+-- FUNCION 4: JPS_FN_PORC_PART_BIMESTRE
+-- ============================================================
+
+create or replace NONEDITIONABLE FUNCTION JPS_FN_PORC_PART_BIMESTRE(
+    p_id_miembro IN NUMBER,
+    p_id_club    IN NUMBER,
+    p_bimestre   IN NUMBER,
+    p_anio       IN NUMBER
+) RETURN NUMBER IS
+    v_total_reuniones NUMBER := 0;
+    v_inasistencias   NUMBER := 0;
+    v_porc_faltas     NUMBER := 0;
+    v_mes_inicio      NUMBER;
+    v_mes_fin         NUMBER;
+BEGIN
+    -- 1. Determinar los meses correspondientes al bimestre (Ej: Bimestre 1 = Mes 1 y 2)
+    v_mes_inicio := (p_bimestre - 1) * 2 + 1;
+    v_mes_fin    := v_mes_inicio + 1;
+
+    -- 2. Contar cuántas reuniones tuvo programadas el grupo de ese miembro en ese club
+    SELECT COUNT(*)
+    INTO v_total_reuniones
+    FROM JPS_CALENDARIO_MES_REUNION r
+    JOIN JPS_G_LC glc ON r.idGrupo = glc.idGrupo AND r.idClub = glc.idClub
+    WHERE glc.idMiembro = p_id_miembro
+      AND glc.idClub    = p_id_club
+      AND EXTRACT(YEAR FROM r.fecha) = p_anio
+      AND EXTRACT(MONTH FROM r.fecha) BETWEEN v_mes_inicio AND v_mes_fin;
+
+    -- Si no hubo reuniones agendadas, retornamos NULL (para que el menú diga "Sin datos")
+    IF v_total_reuniones = 0 THEN
+        RETURN NULL;
+    END IF;
+
+    -- 3. Contar cuántas veces faltó ESE miembro en ese periodo
+    SELECT COUNT(*)
+    INTO v_inasistencias
+    FROM JPS_INASISTENCIA i
+    WHERE i.idMiembro = p_id_miembro
+      AND i.idClub    = p_id_club
+      AND EXTRACT(YEAR FROM i.fecha) = p_anio
+      AND EXTRACT(MONTH FROM i.fecha) BETWEEN v_mes_inicio AND v_mes_fin;
+
+    -- 4. Calcular el porcentaje de FALTAS
+    v_porc_faltas := ROUND((v_inasistencias / v_total_reuniones) * 100, 2);
+
+    -- Seguro: Las faltas no pueden ser más del 100% de las reuniones
+    IF v_porc_faltas > 100 THEN
+        v_porc_faltas := 100;
+    END IF;
+
+    RETURN v_porc_faltas;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('ERROR en JPS_FN_PORC_PART_BIMESTRE: ' || SQLERRM);
+        RETURN NULL;
+END JPS_FN_PORC_PART_BIMESTRE;
+
+
+
+=========================================================================================
+ 
+SET SERVEROUTPUT ON SIZE 100000;
+SET VERIFY OFF;
+SET FEEDBACK OFF;
+
+-- ============================================================
+-- DEMOSTRACIÓN FUNCIÓN 1: CONVERSIÓN MONETARIA (A DÓLARES)
+-- ============================================================
+
+-- Muestra las monedas de origen disponibles en el sistema para guiar al usuario
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('============================================================');
+    DBMS_OUTPUT.PUT_LINE('   FUNCIÓN 1: CONVERSIÓN MONETARIA A DÓLARES');
+    DBMS_OUTPUT.PUT_LINE('============================================================');
+    DBMS_OUTPUT.PUT_LINE('Monedas de origen disponibles en el sistema:');
+    DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------');
+    FOR r IN (
+        SELECT DISTINCT p.moneda, p.nombre AS pais
+        FROM JPS_PAIS p
+        WHERE UPPER(p.moneda) != 'DOLAR' -- Mostramos las que se pueden convertir a Dólar
+        ORDER BY p.moneda
+    ) LOOP
+        DBMS_OUTPUT.PUT_LINE('  ' || RPAD(r.moneda, 15) || '→ (País de origen: ' || r.pais || ')');
+    END LOOP;
+    DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------');
+END;
+/
+
+-- Solicita únicamente el monto y la moneda de origen
+ACCEPT v_monto       PROMPT '>> Ingrese el monto a convertir: ';
+ACCEPT v_moneda_orig PROMPT '>> Ingrese la moneda ORIGEN (ej: Corona, Dolar, DOlar AUD, Euro, Libra, Peso, Real, Rupia, Sequel): ';
+
+BEGIN
+    DECLARE
+        v_resultado NUMBER;
+    BEGIN
+        -- Forzamos que el tercer parámetro (destino) siempre sea 'Dolar'
+        v_resultado := JPS_FN_CONVERSION_MONETARIA(
+                           &v_monto,
+                           '&v_moneda_orig',
+                           'Dolar'
+                       );
+                       
+        -- Formateo y muestra de resultados en pantalla
+        DBMS_OUTPUT.PUT_LINE(' ');
+        DBMS_OUTPUT.PUT_LINE('============================================================');
+        DBMS_OUTPUT.PUT_LINE('   RESULTADO DE LA CONVERSIÓN');
+        DBMS_OUTPUT.PUT_LINE('============================================================');
+        DBMS_OUTPUT.PUT_LINE('  [VALOR INGRESADO]          : ' || &v_monto || ' ' || '&v_moneda_orig');
+        
+        IF v_resultado IS NOT NULL THEN
+            DBMS_OUTPUT.PUT_LINE('  [VALOR TRAS LA CONVERSIÓN] : ' || v_resultado || ' Dolar');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('  [ERROR]                    : No se pudo realizar la conversión.');
+            DBMS_OUTPUT.PUT_LINE('                               Verifique si la moneda origen existe.');
+        END IF;
+        
+        DBMS_OUTPUT.PUT_LINE('============================================================');
+        DBMS_OUTPUT.PUT_LINE('>>> El procedimiento de conversión monetaria ha terminado.');
+        DBMS_OUTPUT.PUT_LINE('============================================================');
+    END;
+END;
+/
+
+
+
+============================================================================
+
+
+
+
+SET SERVEROUTPUT ON SIZE 100000;
+SET VERIFY OFF;
+SET FEEDBACK OFF;
+
+-- ============================================================
+-- DEMOSTRACIÓN FUNCIÓN 2: EDAD Y ANTIGÜEDAD UNIFICADA
+-- ============================================================
+
+-- Muestra la lista de miembros activos para orientar al usuario con datos reales
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('============================================================');
+    DBMS_OUTPUT.PUT_LINE('   FUNCIÓN 2: EDAD DEL MIEMBRO Y ANTIGÜEDAD EN EL CLUB');
+    DBMS_OUTPUT.PUT_LINE('============================================================');
+    DBMS_OUTPUT.PUT_LINE('Miembros y clubes activos en el sistema (Sugerencias para pruebas):');
+    DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------');
+    DBMS_OUTPUT.PUT_LINE(RPAD('ID MBR', 8) || RPAD('NOMBRE MIEMBRO', 25) || RPAD('ID CLUB', 8) || 'NOMBRE CLUB');
+    DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------');
+    FOR r IN (
+        SELECT m.idMiembro,
+               m.primer_nombre || ' ' || m.primer_apellido AS nombre_mbr,
+               cl.idClub,
+               cl.nombre AS nombre_club
+        FROM JPS_MIEMBRO m
+        JOIN JPS_HISTORICO_MEMBRESIA hm ON m.idMiembro = hm.idMiembro
+        JOIN JPS_CLUB_LECTURA cl ON hm.idClub = cl.idClub
+        WHERE hm.estatus = 'activo'
+          AND hm.fecha_fin IS NULL
+        ORDER BY m.idMiembro, cl.idClub
+    ) LOOP
+        DBMS_OUTPUT.PUT_LINE(
+            RPAD(r.idMiembro, 8) ||
+            RPAD(r.nombre_mbr, 25) ||
+            RPAD(r.idClub, 8) ||
+            r.nombre_club
+        );
+    END LOOP;
+    DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------');
+END;
+/
+
+-- Solicita los IDs de entrada al usuario
+ACCEPT v_id_miembro PROMPT '>> Ingrese el ID del miembro a consultar: ';
+ACCEPT v_id_club    PROMPT '>> Ingrese el ID del club asociado:    ';
+
+BEGIN
+    DECLARE
+        v_nombre_mbr     VARCHAR2(100);
+        v_nombre_club    VARCHAR2(100);
+        v_resultado_func VARCHAR2(200);
+    BEGIN
+        -- Obtener nombres descriptivos basados en los IDs ingresados
+        SELECT m.primer_nombre || ' ' || m.primer_apellido
+        INTO v_nombre_mbr
+        FROM JPS_MIEMBRO m
+        WHERE m.idMiembro = &v_id_miembro;
+
+        SELECT cl.nombre
+        INTO v_nombre_club
+        FROM JPS_CLUB_LECTURA cl
+        WHERE cl.idClub = &v_id_club;
+
+        -- LLAMADA A LA FUNCIÓN UNIFICADA (Realiza ambos cálculos internamente)
+        v_resultado_func := JPS_FN_EDAD_ANTIGUEDAD(&v_id_miembro, &v_id_club);
+
+        -- Formateo y muestra de resultados en pantalla
+        DBMS_OUTPUT.PUT_LINE(' ');
+        DBMS_OUTPUT.PUT_LINE('============================================================');
+        DBMS_OUTPUT.PUT_LINE('   RESULTADO DE EDAD Y ANTIGÜEDAD');
+        DBMS_OUTPUT.PUT_LINE('============================================================');
+        DBMS_OUTPUT.PUT_LINE('  [VALORES INGRESADOS]');
+        DBMS_OUTPUT.PUT_LINE('  - ID Miembro : ' || &v_id_miembro || ' (' || v_nombre_mbr || ')');
+        DBMS_OUTPUT.PUT_LINE('  - ID Club    : ' || &v_id_club    || ' (' || v_nombre_club || ')');
+        DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------');
+        DBMS_OUTPUT.PUT_LINE('  [CÁLCULO DESDE LA FUNCIÓN]');
+        DBMS_OUTPUT.PUT_LINE('  - ' || v_resultado_func);
+        DBMS_OUTPUT.PUT_LINE('============================================================');
+        DBMS_OUTPUT.PUT_LINE('>>> El procedimiento de edad y antigüedad ha terminado.');
+        DBMS_OUTPUT.PUT_LINE('============================================================');
+
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            DBMS_OUTPUT.PUT_LINE(' ');
+            DBMS_OUTPUT.PUT_LINE('============================================================');
+            DBMS_OUTPUT.PUT_LINE('  [ERROR] : El ID del miembro o del club ingresado no existe.');
+            DBMS_OUTPUT.PUT_LINE('            Por favor, ejecute el script de nuevo y use la tabla guía.');
+            DBMS_OUTPUT.PUT_LINE('============================================================');
+            DBMS_OUTPUT.PUT_LINE('>>> El procedimiento de edad y antigüedad ha terminado.');
+            DBMS_OUTPUT.PUT_LINE('============================================================');
+        WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE(' ');
+            DBMS_OUTPUT.PUT_LINE('  [ERROR INESPERADO] : ' || SQLERRM);
+            DBMS_OUTPUT.PUT_LINE('============================================================');
+            DBMS_OUTPUT.PUT_LINE('>>> El procedimiento de edad y antigüedad ha terminado.');
+            DBMS_OUTPUT.PUT_LINE('============================================================');
+    END;
+END;
+/
+
+
+=======================================================================================
+
+
+
+SET SERVEROUTPUT ON SIZE 100000;
+SET VERIFY OFF;
+SET FEEDBACK OFF;
+
+-- ============================================================
+-- FUNCIÓN 3: % PARTICIPACIÓN MENSUAL EXCLUSIVA POR TIPO
+-- ============================================================
+
+-- Bloque 1: Guía de sugerencias en base de datos
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('============================================================');
+    DBMS_OUTPUT.PUT_LINE('   FUNCIÓN 3: % PROMEDIO PARTICIPACIÓN MENSUAL POR TIPO');
+    DBMS_OUTPUT.PUT_LINE('============================================================');
+    DBMS_OUTPUT.PUT_LINE('Tipos de grupo válidos: adulto / joven / niño');
+    DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------');
+    DBMS_OUTPUT.PUT_LINE('Reuniones registradas en el sistema (Sugerencias):');
+    DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------');
+    DBMS_OUTPUT.PUT_LINE(RPAD('CLUB',6) || RPAD('GRUPO',7) || RPAD('TIPO',10) ||
+                         RPAD('MES',5)  || RPAD('AÑO',6)   || 'REUNIONES');
+    DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------');
+    
+    -- Corrección de ROWNUM con Subconsulta para evitar congelamiento
+    FOR r IN (
+        SELECT * FROM (
+            SELECT rg.idClub, rg.idGrupo, gl.tipo, rg.mes, rg.anio, rg.total_reuniones
+            FROM JPS_V_REUNIONES_POR_GRUPO rg
+            JOIN JPS_GRUPO_LECTURA gl ON rg.idGrupo = gl.idGrupo AND rg.idClub = gl.idClub
+            ORDER BY rg.anio DESC, rg.mes DESC, rg.idClub ASC
+        ) WHERE ROWNUM <= 10
+    ) LOOP
+        DBMS_OUTPUT.PUT_LINE(
+            RPAD(r.idClub,          6) ||
+            RPAD(r.idGrupo,         7) ||
+            RPAD(r.tipo,           10) ||
+            RPAD(r.mes,             5) ||
+            RPAD(r.anio,            6) ||
+            r.total_reuniones
+        );
+    END LOOP;
+    DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------');
+END;
+/
+
+-- Solicitud de Parámetros Interactivos (Pop-ups)
+ACCEPT v_tipo_grupo PROMPT '>> Ingrese el tipo de grupo (adulto / joven / niño): ';
+ACCEPT v_mes        PROMPT '>> Ingrese el mes en numero (1-12):                  ';
+ACCEPT v_anio_fn3   PROMPT '>> Ingrese el año (ej: 2024):                        ';
+
+-- Bloque 2: Procesamiento y Output exclusivo del tipo solicitado
+DECLARE
+    v_tipo      VARCHAR2(30) := LOWER(TRIM('&v_tipo_grupo'));
+    v_mes       NUMBER       := &v_mes;
+    v_anio      NUMBER       := &v_anio_fn3;
+    v_resultado NUMBER;
+BEGIN
+    -- Homologación de entradas por si el usuario escribe en plural
+    IF v_tipo LIKE 'adulto%' THEN v_tipo := 'adulto'; END IF;
+    IF v_tipo LIKE 'joven%'  THEN v_tipo := 'joven';  END IF;
+    IF v_tipo LIKE 'niño%' OR v_tipo LIKE 'nino%' THEN v_tipo := 'niño'; END IF;
+
+    -- 1. Ejecución de la función utilizando estrictamente la fórmula original (JPS_FN_PORC_PART_MENSUAL)
+    v_resultado := JPS_FN_PORC_PART_MENSUAL(v_tipo, v_mes, v_anio);
+
+    -- 2. Formateo del Reporte Limpio y Exclusivo solicitado
+    DBMS_OUTPUT.PUT_LINE(' ');
+    DBMS_OUTPUT.PUT_LINE('============================================================');
+    DBMS_OUTPUT.PUT_LINE('   RESULTADO: DEPARTAMENTO DE AUDITORÍA DE PARTICIPACIÓN');
+    DBMS_OUTPUT.PUT_LINE('============================================================');
+    DBMS_OUTPUT.PUT_LINE('  [FILTRO APLICADO]');
+    DBMS_OUTPUT.PUT_LINE('  - Categoría Evaluada : ' || UPPER(v_tipo));
+    DBMS_OUTPUT.PUT_LINE('  - Periodo            : Mes ' || v_mes || ' | Año ' || v_anio);
+    DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------');
+    DBMS_OUTPUT.PUT_LINE('  [MÉTRICA OBTENIDA]');
+    
+    IF v_resultado IS NULL THEN
+        DBMS_OUTPUT.PUT_LINE('  - Porcentaje de participación: Sin registros de reuniones para este tipo.');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('  - Porcentaje de participación: ' || v_resultado || '%');
+    END IF;
+    
+    DBMS_OUTPUT.PUT_LINE('============================================================');
+    DBMS_OUTPUT.PUT_LINE('>>> Fin del reporte exclusivo por categoría.');
+    DBMS_OUTPUT.PUT_LINE('============================================================');
+
+EXCEPTION
+    WHEN VALUE_ERROR THEN
+        DBMS_OUTPUT.PUT_LINE(' ');
+        DBMS_OUTPUT.PUT_LINE('============================================================');
+        DBMS_OUTPUT.PUT_LINE('  [ERROR DE FORMATO] Ingrese valores numéricos válidos.');
+        DBMS_OUTPUT.PUT_LINE('============================================================');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE(' ');
+        DBMS_OUTPUT.PUT_LINE('============================================================');
+        DBMS_OUTPUT.PUT_LINE('  [ERROR INESPERADO] : ' || SQLERRM);
+        DBMS_OUTPUT.PUT_LINE('============================================================');
+END;
+/
+
+
+
+========================================================================================
+
+
+SET SERVEROUTPUT ON SIZE 100000;
+SET VERIFY OFF;
+SET FEEDBACK OFF;
+
+-- ============================================================
+-- DEMOSTRACIÓN FUNCIÓN 4: % INASISTENCIA BIMESTRAL (Regla 30%)
+-- ============================================================
+
+-- Guía visual para orientar al usuario en la consola
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('============================================================');
+    DBMS_OUTPUT.PUT_LINE('   FUNCIÓN 4: % PARTICIPACIÓN BIMESTRAL Y REGLA DE RETIRO');
+    DBMS_OUTPUT.PUT_LINE('============================================================');
+    DBMS_OUTPUT.PUT_LINE('Guía de Bimestres:');
+    DBMS_OUTPUT.PUT_LINE('  1 = Ene - Feb   |  3 = May - Jun   |  5 = Sep - Oct');
+    DBMS_OUTPUT.PUT_LINE('  2 = Mar - Abr   |  4 = Jul - Ago   |  6 = Nov - Dic');
+    DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------');
+END;
+/
+
+-- Solicitud de Parámetros Interactivamente
+ACCEPT v_id_mbr_fn4  PROMPT '>> Ingrese el ID del miembro (Ej: 1, 3, 13): ';
+ACCEPT v_id_club_fn4 PROMPT '>> Ingrese el ID del club asociado (Ej: 1, 2): ';
+ACCEPT v_bimestre    PROMPT '>> Ingrese el bimestre (1-6):                  ';
+ACCEPT v_anio_fn4    PROMPT '>> Ingrese el año (ej: 2024):                  ';
+
+DECLARE
+    v_porc      NUMBER;
+    v_nombre    VARCHAR2(100);
+    v_club      VARCHAR2(100);
+    v_mes_ini   NUMBER;
+    v_mes_fin   NUMBER;
+BEGIN
+    -- 1. Cálculo matemático del rango de meses a partir del bimestre ingresado
+    v_mes_ini := (&v_bimestre - 1) * 2 + 1;
+    v_mes_fin := v_mes_ini + 1;
+
+    -- 2. Extraemos nombres legibles para el reporte (Con manejo de errores)
+    BEGIN
+        SELECT m.primer_nombre || ' ' || m.primer_apellido INTO v_nombre
+        FROM JPS_MIEMBRO m WHERE m.idMiembro = &v_id_mbr_fn4;
+        
+        SELECT cl.nombre INTO v_club
+        FROM JPS_CLUB_LECTURA cl WHERE cl.idClub = &v_id_club_fn4;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            v_nombre := 'Miembro Desconocido';
+            v_club   := 'Club Desconocido';
+    END;
+
+    -- 3. EJECUCIÓN DE LA FUNCIÓN
+    v_porc := JPS_FN_PORC_PART_BIMESTRE(&v_id_mbr_fn4, &v_id_club_fn4, &v_bimestre, &v_anio_fn4);
+
+    -- 4. Formateo y muestra de resultados en pantalla
+    DBMS_OUTPUT.PUT_LINE(' ');
+    DBMS_OUTPUT.PUT_LINE('============================================================');
+    DBMS_OUTPUT.PUT_LINE('   RESULTADO: REPORTE DE INASISTENCIA BIMESTRAL');
+    DBMS_OUTPUT.PUT_LINE('============================================================');
+    DBMS_OUTPUT.PUT_LINE('  [VALORES EVALUADOS]');
+    DBMS_OUTPUT.PUT_LINE('  - Miembro   : ' || &v_id_mbr_fn4 || ' (' || v_nombre || ')');
+    DBMS_OUTPUT.PUT_LINE('  - Club      : ' || &v_id_club_fn4 || ' (' || v_club || ')');
+    DBMS_OUTPUT.PUT_LINE('  - Periodo   : Bimestre ' || &v_bimestre || ' (Meses ' || v_mes_ini || ' a ' || v_mes_fin || ') del ' || &v_anio_fn4);
+    DBMS_OUTPUT.PUT_LINE('------------------------------------------------------------');
+    DBMS_OUTPUT.PUT_LINE('  [ESTADO DEL MIEMBRO]');
+    
+    -- Evaluación de la regla de negocio del 30%
+    IF v_porc IS NULL THEN
+        DBMS_OUTPUT.PUT_LINE('  - RESULTADO : Sin datos de reuniones agendadas para este periodo.');
+    ELSIF v_porc > 30 THEN
+        DBMS_OUTPUT.PUT_LINE('  - % FALTAS  : ' || v_porc || '%');
+        DBMS_OUTPUT.PUT_LINE('  - ⚠ ALERTA  : SUPERA EL LÍMITE (30%) -> DEBE SER RETIRADO DEL CLUB.');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('  - % FALTAS  : ' || v_porc || '%');
+        DBMS_OUTPUT.PUT_LINE('  - ESTATUS   : Miembro regular (Dentro del rango permitido <= 30%).');
+    END IF;
+    
+    DBMS_OUTPUT.PUT_LINE('============================================================');
+    DBMS_OUTPUT.PUT_LINE('>>> El procedimiento participacion bimestral ha terminado.');
+    DBMS_OUTPUT.PUT_LINE('============================================================');
+
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE(' ');
+        DBMS_OUTPUT.PUT_LINE('============================================================');
+        DBMS_OUTPUT.PUT_LINE('  [ERROR] Verifique que haya ingresado números válidos.');
+        DBMS_OUTPUT.PUT_LINE('============================================================');
+END;
+/
