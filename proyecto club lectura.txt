@@ -1,0 +1,486 @@
+PROYECTO: CLUB DE LECTURA GRUPO 9 SECCION 25758
+
+-- ============================================================
+-- SECUENCIAS
+-- ============================================================
+CREATE SEQUENCE JPS_seq_pais          START WITH 1 INCREMENT BY 1 NOCYCLE;
+CREATE SEQUENCE JPS_seq_ciudad        START WITH 1 INCREMENT BY 1 NOCYCLE;
+CREATE SEQUENCE JPS_seq_institucion   START WITH 1 INCREMENT BY 1 NOCYCLE;
+CREATE SEQUENCE JPS_seq_idioma        START WITH 1 INCREMENT BY 1 NOCYCLE;
+CREATE SEQUENCE JPS_seq_autor         START WITH 1 INCREMENT BY 1 NOCYCLE;
+CREATE SEQUENCE JPS_seq_representante START WITH 1 INCREMENT BY 1 NOCYCLE;
+CREATE SEQUENCE JPS_seq_miembro       START WITH 1 INCREMENT BY 1 NOCYCLE;
+CREATE SEQUENCE JPS_seq_club_lectura  START WITH 1 INCREMENT BY 1 NOCYCLE;
+CREATE SEQUENCE JPS_seq_grupo_lectura START WITH 1 INCREMENT BY 1 NOCYCLE;
+
+
+
+-- ============================================================
+-- TABLAS (Creates)
+-- Orden: de menor a mayor dependencia (sin FK hacia adelante)
+-- ============================================================
+
+-- 1. PAIS
+CREATE TABLE JPS_PAIS (
+    idPais       NUMBER(3)    PRIMARY KEY NOT NULL,
+    nombre       VARCHAR2(50) NOT NULL,
+    continente   VARCHAR2(30) NOT NULL,
+    moneda       VARCHAR2(30) NOT NULL,
+    nacionalidad VARCHAR2(50) NOT NULL
+);
+
+-- 2. CIUDAD
+CREATE TABLE JPS_CIUDAD (
+    idCiudad NUMBER(4)    PRIMARY KEY NOT NULL,
+    idPais   NUMBER(3)    NOT NULL,
+    nombre   VARCHAR2(50) NOT NULL,
+    CONSTRAINT FK_JPS_CIUDAD_PAIS FOREIGN KEY (idPais) REFERENCES JPS_PAIS(idPais)
+);
+
+-- 3. INSTITUCION
+CREATE TABLE JPS_INSTITUCION (
+    idInstitucion NUMBER(4)     PRIMARY KEY NOT NULL,
+    nombre        VARCHAR2(100) NOT NULL,
+    tipo          VARCHAR2(20)  NOT NULL,
+    CONSTRAINT CHECK_JPS_TIPO_INST CHECK (tipo IN ('biblioteca','universidad','colegio','otro'))
+);
+
+-- 4. LIBRO
+CREATE TABLE JPS_LIBRO (
+    ISBN                          VARCHAR2(20)  PRIMARY KEY NOT NULL,
+    titulo_original               VARCHAR2(100) NOT NULL,
+    anio_publicacion_1era_edicion NUMBER(4)     NOT NULL,
+    sinopsis                      VARCHAR2(500) NOT NULL,
+    cantidad_paginas              NUMBER(4)     NOT NULL,
+    tipo_narrativa                VARCHAR2(20)  NOT NULL,
+    resumen_tema                  VARCHAR2(500) NOT NULL,
+    CONSTRAINT CHECK_JPS_NARRATIVA CHECK (tipo_narrativa IN ('novela','cuento','leyenda','fabula','epopeya','mito'))
+);
+
+-- 5. AUTOR
+CREATE TABLE JPS_AUTOR (
+    idAutor              NUMBER(6) PRIMARY KEY NOT NULL,
+    primer_nombre        VARCHAR2(30),
+    primer_apellido      VARCHAR2(30),
+    segundo_apellido     VARCHAR2(30),
+    nombre_ant_seudonimo VARCHAR2(50),
+    segundo_nombre       VARCHAR2(30)
+);
+
+-- 6. L_A  (relación M:N entre Libro y Autor)
+CREATE TABLE JPS_L_A (
+    ISBN    VARCHAR2(20) NOT NULL,
+    idAutor NUMBER(6)    NOT NULL,
+    CONSTRAINT PK_JPS_L_A   PRIMARY KEY (ISBN, idAutor),
+    CONSTRAINT FK_JPS_LA_LIBRO FOREIGN KEY (ISBN)    REFERENCES JPS_LIBRO(ISBN),
+    CONSTRAINT FK_JPS_LA_AUTOR FOREIGN KEY (idAutor) REFERENCES JPS_AUTOR(idAutor)
+);
+
+-- 7. IDIOMA
+CREATE TABLE JPS_IDIOMA (
+    idIdioma NUMBER(3)    PRIMARY KEY NOT NULL,
+    nombre   VARCHAR2(30) NOT NULL
+);
+
+-- 8. REPRESENTANTE
+CREATE TABLE JPS_REPRESENTANTE (
+    idRepresentante  NUMBER(6)    PRIMARY KEY NOT NULL,
+    doc_identidad    VARCHAR2(15) NOT NULL,
+    primer_nombre    VARCHAR2(30) NOT NULL,
+    primer_apellido  VARCHAR2(30) NOT NULL,
+    segundo_apellido VARCHAR2(30) NOT NULL,
+    segundo_nombre   VARCHAR2(30),
+    fecha_nacimiento DATE,
+    telefono         VARCHAR2(15),
+    email            VARCHAR2(50)
+);
+
+-- 9. MIEMBRO
+CREATE TABLE JPS_MIEMBRO (
+    idMiembro              NUMBER(6)    PRIMARY KEY NOT NULL,
+    idPais_nacio           NUMBER(3)    NOT NULL,
+    doc_identidad          VARCHAR2(15) NOT NULL,
+    primer_nombre          VARCHAR2(30) NOT NULL,
+    primer_apellido        VARCHAR2(30) NOT NULL,
+    segundo_apellido       VARCHAR2(30) NOT NULL,
+    fecha_nacimiento       DATE         NOT NULL,
+    telefono               VARCHAR2(15) NOT NULL,
+    email                  VARCHAR2(50) NOT NULL,
+    idRepresentante        NUMBER(6),
+    idMiembro_representado NUMBER(6),
+    segundo_nombre         VARCHAR2(30),
+    CONSTRAINT FK_JPS_MIEMBRO_PAIS       FOREIGN KEY (idPais_nacio)          REFERENCES JPS_PAIS(idPais),
+    CONSTRAINT FK_JPS_MIEMBRO_REP        FOREIGN KEY (idRepresentante)       REFERENCES JPS_REPRESENTANTE(idRepresentante),
+    CONSTRAINT FK_JPS_MIEMBRO_REPR       FOREIGN KEY (idMiembro_representado) REFERENCES JPS_MIEMBRO(idMiembro),
+    CONSTRAINT CHECK_JPS_REPRESENTADO    CHECK (
+        (idRepresentante IS NULL AND idMiembro_representado IS NULL) OR
+        (idRepresentante IS NOT NULL AND idMiembro_representado IS NOT NULL)
+    )
+);
+
+
+-- 10. PREFERENCIA  (relación M:N entre Miembro y Libro)
+CREATE TABLE JPS_PREFERENCIA (
+    idMiembro         NUMBER(6)    NOT NULL,
+    ISBN              VARCHAR2(20) NOT NULL,
+    orden_preferencia NUMBER(1)    NOT NULL,
+    CONSTRAINT PK_JPS_PREFERENCIA  PRIMARY KEY (idMiembro, ISBN, orden_preferencia),
+    CONSTRAINT FK_JPS_PREF_MIEMBRO FOREIGN KEY (idMiembro) REFERENCES JPS_MIEMBRO(idMiembro),
+    CONSTRAINT FK_JPS_PREF_LIBRO   FOREIGN KEY (ISBN)      REFERENCES JPS_LIBRO(ISBN)
+);
+
+-- 11. CLUB_LECTURA
+CREATE TABLE JPS_CLUB_LECTURA (
+    idClub          NUMBER(4)     PRIMARY KEY NOT NULL,
+    idCiudad        NUMBER(4)     NOT NULL,
+    nombre          VARCHAR2(100) NOT NULL,
+    calle_av        VARCHAR2(100) NOT NULL,
+    telefono        VARCHAR2(15)  NOT NULL,
+    email           VARCHAR2(50)  NOT NULL,
+    codigo_postal   VARCHAR2(10)  NOT NULL,
+    cuota_membresia VARCHAR2(2),
+    idInstitucion   NUMBER(4),
+    CONSTRAINT FK_JPS_CLUB_CIUDAD      FOREIGN KEY (idCiudad)      REFERENCES JPS_CIUDAD(idCiudad),
+    CONSTRAINT FK_JPS_CLUB_INSTITUCION FOREIGN KEY (idInstitucion) REFERENCES JPS_INSTITUCION(idInstitucion),
+    CONSTRAINT CHECK_JPS_CUOTA         CHECK (cuota_membresia IN ('si','no'))
+);
+
+--12. I_M
+CREATE TABLE JPS_I_M (
+    idI_M     NUMBER(6)  NOT NULL,   -- ID propio
+    idIdioma  NUMBER(3)  NOT NULL,   -- viene de IDIOMA
+    idMiembro NUMBER(6),             -- FK normal, opcional (arco exclusivo)
+    idClub    NUMBER(4),             -- FK normal, opcional (arco exclusivo)
+    CONSTRAINT PK_JPS_I_M        PRIMARY KEY (idI_M, idIdioma),
+    CONSTRAINT FK_JPS_IM_IDIOMA  FOREIGN KEY (idIdioma)  REFERENCES JPS_IDIOMA(idIdioma),
+    CONSTRAINT FK_JPS_IM_MIEMBRO FOREIGN KEY (idMiembro) REFERENCES JPS_MIEMBRO(idMiembro),
+    CONSTRAINT FK_JPS_IM_CLUB    FOREIGN KEY (idClub)    REFERENCES JPS_CLUB_LECTURA(idClub),
+    CONSTRAINT CHECK_JPS_IM_ARCO CHECK (
+        (idMiembro IS NOT NULL AND idClub IS NULL) OR
+        (idMiembro IS NULL AND idClub IS NOT NULL)
+    )
+);
+
+
+-- 13. ASOCIADO
+CREATE TABLE JPS_ASOCIADO (
+    idClub1 NUMBER(4) NOT NULL,
+    idClub2 NUMBER(4) NOT NULL,
+    CONSTRAINT PK_JPS_CLUB_ASOCIADO PRIMARY KEY (idClub1, idClub2),
+    CONSTRAINT FK_JPS_ASOC_CLUB1    FOREIGN KEY (idClub1) REFERENCES JPS_CLUB_LECTURA(idClub),
+    CONSTRAINT FK_JPS_ASOC_CLUB2    FOREIGN KEY (idClub2) REFERENCES JPS_CLUB_LECTURA(idClub)
+);
+
+-- 14. GRUPO_LECTURA
+--     PK compuesta: idGrupo + idClub
+CREATE TABLE JPS_GRUPO_LECTURA (
+    idGrupo        NUMBER(4)    NOT NULL,
+    idClub         NUMBER(4)    NOT NULL,
+    tipo           VARCHAR2(10) NOT NULL,
+    fecha_creacion DATE         NOT NULL,
+    dia_reunion    VARCHAR2(15) NOT NULL,
+    hora_i         VARCHAR2(5)  NOT NULL,
+    CONSTRAINT PK_JPS_GRUPO_LECTURA PRIMARY KEY (idGrupo, idClub),
+    CONSTRAINT FK_JPS_GRUPO_CLUB    FOREIGN KEY (idClub) REFERENCES JPS_CLUB_LECTURA(idClub),
+    CONSTRAINT CHECK_JPS_TIPO_GRUPO CHECK (tipo IN ('adulto','joven','niño'))
+);
+
+-- 15. OBRA_ACTUADA
+--     PK compuesta: idObra + ISBN (LIBRO) + idClub (CLUB_LECTURA)
+--     costo_entrada y activo son opcionales
+CREATE TABLE JPS_OBRA_ACTUADA (
+    idObra        NUMBER(6)     NOT NULL,
+    ISBN          VARCHAR2(20)  NOT NULL,
+    idClub        NUMBER(4)     NOT NULL,
+    nombre        VARCHAR2(100) NOT NULL,
+    descripcion   VARCHAR2(500) NOT NULL,
+    costo_entrada NUMBER(10,2),
+    activo        VARCHAR2(2),
+    CONSTRAINT PK_JPS_OBRA_ACTUADA PRIMARY KEY (idObra, ISBN, idClub),
+    CONSTRAINT FK_JPS_OBRA_LIBRO   FOREIGN KEY (ISBN)   REFERENCES JPS_LIBRO(ISBN),
+    CONSTRAINT FK_JPS_OBRA_CLUB    FOREIGN KEY (idClub) REFERENCES JPS_CLUB_LECTURA(idClub),
+    CONSTRAINT CHECK_JPS_ACTIVO    CHECK (activo IN ('si','no'))
+);
+
+-- 16. ELENCO
+--     FK a OBRA_ACTUADA requiere las 3 columnas de su PK
+CREATE TABLE JPS_ELENCO (
+    idMiembro NUMBER(6)    NOT NULL,
+    idObra    NUMBER(6)    NOT NULL,
+    ISBN      VARCHAR2(20) NOT NULL,
+    idClub    NUMBER(4)    NOT NULL,
+    CONSTRAINT PK_JPS_ELENCO         PRIMARY KEY (idMiembro, idObra, ISBN, idClub),
+    CONSTRAINT FK_JPS_ELENCO_MIEMBRO  FOREIGN KEY (idMiembro)          REFERENCES JPS_MIEMBRO(idMiembro),
+    CONSTRAINT FK_JPS_ELENCO_OBRA     FOREIGN KEY (idObra, ISBN, idClub) REFERENCES JPS_OBRA_ACTUADA(idObra, ISBN, idClub)
+);
+
+-- 17. HISTORICO_MEMBRESIA
+--     fecha_fin y motivo_deuda son opcionales
+CREATE TABLE JPS_HISTORICO_MEMBRESIA (
+    fecha_inicio DATE         NOT NULL,
+    idMiembro    NUMBER(6)    NOT NULL,
+    idClub       NUMBER(4)    NOT NULL,
+    estatus      VARCHAR2(10) NOT NULL,
+    fecha_fin    DATE,
+    motivo_deuda VARCHAR2(15),
+    CONSTRAINT PK_JPS_HISTORICO  PRIMARY KEY (fecha_inicio, idMiembro, idClub),
+    CONSTRAINT FK_JPS_HM_MIEMBRO FOREIGN KEY (idMiembro) REFERENCES JPS_MIEMBRO(idMiembro),
+    CONSTRAINT FK_JPS_HM_CLUB    FOREIGN KEY (idClub)    REFERENCES JPS_CLUB_LECTURA(idClub),
+    CONSTRAINT CHECK_JPS_ESTATUS CHECK (estatus IN ('activo','inactivo')),
+    CONSTRAINT CHECK_JPS_MOTIVO  CHECK (motivo_deuda IN ('voluntario','deudas','Inasistencia','otro'))
+);
+
+-- 18. MEMBRESIA_PAGO
+--     PK compuesta hereda de HISTORICO_MEMBRESIA
+CREATE TABLE JPS_MEMBRESIA_PAGO (
+    idPago       NUMBER(6) NOT NULL,
+    fecha_inicio DATE      NOT NULL,
+    idMiembro    NUMBER(6) NOT NULL,
+    idClub       NUMBER(4) NOT NULL,
+    fecha_pago   DATE      NOT NULL,
+    CONSTRAINT PK_JPS_PAGO    PRIMARY KEY (idPago, fecha_inicio, idMiembro, idClub),
+    CONSTRAINT FK_JPS_PAGO_HM FOREIGN KEY (fecha_inicio, idMiembro, idClub)
+        REFERENCES JPS_HISTORICO_MEMBRESIA(fecha_inicio, idMiembro, idClub)
+);
+
+-- 19. G_LC  (modera reuniones: qué miembro modera qué grupo)
+CREATE TABLE JPS_G_LC (
+    fecha_inicio DATE      NOT NULL,
+    idMiembro    NUMBER(6) NOT NULL,
+    idClub       NUMBER(4) NOT NULL,
+    idGrupo      NUMBER(4) NOT NULL,
+    fecha_fin    DATE,
+    CONSTRAINT PK_JPS_G_LC    PRIMARY KEY (fecha_inicio, idMiembro, idClub, idGrupo),
+    CONSTRAINT FK_JPS_GLC_HM  FOREIGN KEY (fecha_inicio, idMiembro, idClub)
+        REFERENCES JPS_HISTORICO_MEMBRESIA(fecha_inicio, idMiembro, idClub),
+    CONSTRAINT FK_JPS_GLC_GRUPO FOREIGN KEY (idGrupo, idClub)
+        REFERENCES JPS_GRUPO_LECTURA(idGrupo, idClub)
+);
+
+-- 20. CALENDARIO_MES_REUNION
+CREATE TABLE JPS_CALENDARIO_MES_REUNION (
+    fecha        DATE         NOT NULL,
+    idClub       NUMBER(4)    NOT NULL,
+    idGrupo      NUMBER(4)    NOT NULL,
+    ISBN         VARCHAR2(20) NOT NULL,
+    fecha_inicio DATE         NOT NULL,   -- FK a G_LC (moderador)
+    idMiembro    NUMBER(6)    NOT NULL,   -- FK a G_LC (moderador)
+    realizada    VARCHAR2(2)  NOT NULL,
+    conclusiones     VARCHAR2(500),
+    ultima_discusion VARCHAR2(500),
+    valoracion_final NUMBER(1),
+    CONSTRAINT PK_JPS_CALENDARIO      PRIMARY KEY (fecha, idGrupo, idClub, ISBN),
+    CONSTRAINT FK_JPS_CAL_GRUPO       FOREIGN KEY (idGrupo, idClub)
+        REFERENCES JPS_GRUPO_LECTURA(idGrupo, idClub),
+    CONSTRAINT FK_JPS_CAL_LIBRO       FOREIGN KEY (ISBN)
+        REFERENCES JPS_LIBRO(ISBN),
+    CONSTRAINT FK_JPS_CAL_GLC         FOREIGN KEY (fecha_inicio, idMiembro, idClub, idGrupo)
+        REFERENCES JPS_G_LC(fecha_inicio, idMiembro, idClub, idGrupo),
+    CONSTRAINT CHECK_JPS_REALIZADA    CHECK (realizada IN ('si','no')),
+    CONSTRAINT CHECK_JPS_VALORACION   CHECK (valoracion_final BETWEEN 1 AND 5)
+);
+
+-- 21. INASISTENCIA
+CREATE TABLE JPS_INASISTENCIA (
+    fecha        DATE         NOT NULL,
+    idClub       NUMBER(4)    NOT NULL,
+    idGrupo      NUMBER(4)    NOT NULL,
+    ISBN         VARCHAR2(20) NOT NULL,
+    fecha_inicio DATE         NOT NULL,
+    idMiembro    NUMBER(6)    NOT NULL,
+    estatus      VARCHAR2(15) NOT NULL,
+    CONSTRAINT PK_JPS_INASISTENCIA    PRIMARY KEY (fecha, idGrupo, idClub, ISBN, fecha_inicio, idMiembro),
+    CONSTRAINT FK_JPS_INAS_CALENDARIO FOREIGN KEY (fecha, idGrupo, idClub, ISBN)
+        REFERENCES JPS_CALENDARIO_MES_REUNION(fecha, idGrupo, idClub, ISBN),
+    CONSTRAINT FK_JPS_INAS_GLC        FOREIGN KEY (fecha_inicio, idMiembro, idClub, idGrupo)
+        REFERENCES JPS_G_LC(fecha_inicio, idMiembro, idClub, idGrupo)
+);
+
+
+
+-- 22. PRESENTACION
+CREATE TABLE JPS_PRESENTACION (
+    fecha_presentacion  DATE         NOT NULL,
+    idObra              NUMBER(6)    NOT NULL,
+    ISBN                VARCHAR2(20) NOT NULL,
+    idClub              NUMBER(4)    NOT NULL,
+    cantidad_asistentes NUMBER(5)    NOT NULL,
+    valoracion_obra     VARCHAR2(1)  NOT NULL,
+    CONSTRAINT PK_JPS_PRESENTACION       PRIMARY KEY (fecha_presentacion, idObra, ISBN, idClub),
+    CONSTRAINT FK_JPS_PRES_OBRA          FOREIGN KEY (idObra, ISBN, idClub)
+        REFERENCES JPS_OBRA_ACTUADA(idObra, ISBN, idClub),
+    CONSTRAINT CHECK_JPS_VALORACION_OBRA CHECK (valoracion_obra IN ('1','2','3','4','5'))
+);
+
+-- 23. MEJOR_ACTOR
+CREATE TABLE JPS_MEJOR_ACTOR (
+    idMiembro          NUMBER(6)    NOT NULL,
+    idObra             NUMBER(6)    NOT NULL,
+    ISBN               VARCHAR2(20) NOT NULL,
+    idClub             NUMBER(4)    NOT NULL,
+    fecha_presentacion DATE         NOT NULL,
+    CONSTRAINT PK_JPS_MEJOR_ACTOR     PRIMARY KEY (idMiembro, idObra, ISBN, idClub, fecha_presentacion),
+    CONSTRAINT FK_JPS_MA_ELENCO       FOREIGN KEY (idMiembro, idObra, ISBN, idClub)
+        REFERENCES JPS_ELENCO(idMiembro, idObra, ISBN, idClub),
+    CONSTRAINT FK_JPS_MA_PRESENTACION FOREIGN KEY (fecha_presentacion, idObra, ISBN, idClub)
+        REFERENCES JPS_PRESENTACION(fecha_presentacion, idObra, ISBN, idClub)
+);
+
+
+=======================================================
+AQUI VAN LOS INSERTS QUE SE ENCUENTRAN EN OTRO .TXT
+=======================================================
+
+
+
+======================================
+--  INDICES
+======================================
+
+CREATE INDEX JPS_idx_pais_nombre        ON JPS_PAIS(nombre);
+CREATE INDEX JPS_idx_ciudad_nombre      ON JPS_CIUDAD(nombre);
+CREATE INDEX JPS_idx_institucion_nombre ON JPS_INSTITUCION(nombre);
+CREATE INDEX JPS_idx_club_nombre        ON JPS_CLUB_LECTURA(nombre);
+CREATE INDEX JPS_idx_libro_titulo       ON JPS_LIBRO(titulo_original);
+CREATE INDEX JPS_idx_obra_nombre        ON JPS_OBRA_ACTUADA(nombre);
+CREATE INDEX JPS_idx_autor_nombre_completo ON JPS_AUTOR(primer_apellido, primer_nombre);
+CREATE UNIQUE INDEX JPS_idx_idioma_nombre ON JPS_IDIOMA(nombre);
+CREATE UNIQUE INDEX JPS_idx_miembro_doc   ON JPS_MIEMBRO(doc_identidad);
+CREATE UNIQUE INDEX JPS_idx_miembro_email ON JPS_MIEMBRO(email);
+CREATE UNIQUE INDEX JPS_idx_repres_doc    ON JPS_REPRESENTANTE(doc_identidad);
+
+
+
+-- ============================================================
+-- VISTAS
+-- ============================================================
+ 
+-- -------------------------------------------------------
+-- VISTA 1: JPS_V_TASA_CAMBIO
+-- -------------------------------------------------------
+CREATE OR REPLACE VIEW JPS_V_TASA_CAMBIO AS
+SELECT p.idPais,
+       p.nombre      AS nombre_pais,
+       p.moneda,
+       CASE p.moneda
+           WHEN 'Dolar'     THEN 1.00
+           WHEN 'Euro'      THEN 0.92
+           WHEN 'Libra'     THEN 0.79
+           WHEN 'Real'      THEN 5.05
+           WHEN 'Sequel'    THEN 3.70
+           WHEN 'Corona'    THEN 10.60
+           WHEN 'Dolar AUD' THEN 1.54
+           WHEN 'Peso'      THEN 900.00
+           WHEN 'Rupia'     THEN 83.50
+           ELSE 1.00
+       END AS tasa_a_usd
+FROM JPS_PAIS p;
+
+
+ 
+-- -------------------------------------------------------
+-- VISTA 2: JPS_V_MIEMBROS_ACTIVOS
+-- -------------------------------------------------------
+CREATE OR REPLACE VIEW JPS_V_MIEMBROS_ACTIVOS AS
+SELECT
+    m.idMiembro,
+    m.primer_nombre || ' ' || m.primer_apellido || ' ' || m.segundo_apellido AS nombre_completo,
+    m.fecha_nacimiento,
+    gl.idGrupo,
+    gl.idClub,
+    gl.tipo                                   AS tipo_grupo,
+    cl.nombre                                 AS nombre_club,
+    hm.fecha_inicio                           AS fecha_ingreso_club,
+    hm.estatus
+FROM JPS_MIEMBRO      m
+JOIN JPS_HISTORICO_MEMBRESIA hm ON m.idMiembro = hm.idMiembro
+JOIN JPS_GRUPO_LECTURA       gl ON hm.idClub    = gl.idClub
+JOIN JPS_CLUB_LECTURA        cl ON gl.idClub    = cl.idClub
+WHERE hm.estatus = 'activo'
+  AND hm.fecha_fin IS NULL;
+
+
+ 
+-- -------------------------------------------------------
+-- VISTA 3: JPS_V_REUNIONES_POR_GRUPO
+-- -------------------------------------------------------
+CREATE OR REPLACE VIEW JPS_V_REUNIONES_POR_GRUPO AS
+SELECT
+    cmr.idGrupo,
+    cmr.idClub,
+    EXTRACT(YEAR  FROM cmr.fecha) AS anio,
+    EXTRACT(MONTH FROM cmr.fecha) AS mes,
+    COUNT(*) AS total_reuniones
+FROM JPS_CALENDARIO_MES_REUNION cmr
+WHERE cmr.realizada = 'si'
+GROUP BY cmr.idGrupo, cmr.idClub,
+         EXTRACT(YEAR  FROM cmr.fecha),
+         EXTRACT(MONTH FROM cmr.fecha);
+
+
+
+ 
+-- -------------------------------------------------------
+-- VISTA 4: JPS_V_PARTICIPACION_MENSUAL
+-- -------------------------------------------------------
+CREATE OR REPLACE VIEW JPS_V_PARTICIPACION_MENSUAL AS
+SELECT
+    rg.idGrupo,
+    rg.idClub,
+    gl.tipo                              AS tipo_grupo,
+    rg.anio,
+    rg.mes,
+    rg.total_reuniones,
+    (SELECT COUNT(DISTINCT hm2.idMiembro)
+     FROM JPS_HISTORICO_MEMBRESIA hm2
+     WHERE hm2.idClub   = rg.idClub
+       AND hm2.estatus  = 'activo'
+       AND hm2.fecha_fin IS NULL) AS total_miembros,
+    -- Inasistencias de ese grupo en ese mes
+    (SELECT COUNT(*)
+     FROM JPS_INASISTENCIA i
+     WHERE i.idGrupo = rg.idGrupo
+       AND i.idClub  = rg.idClub
+       AND EXTRACT(YEAR  FROM i.fecha) = rg.anio
+       AND EXTRACT(MONTH FROM i.fecha) = rg.mes
+    ) AS total_inasistencias
+FROM JPS_V_REUNIONES_POR_GRUPO rg
+JOIN JPS_GRUPO_LECTURA gl ON rg.idGrupo = gl.idGrupo
+                          AND rg.idClub  = gl.idClub;
+
+
+
+ 
+-- -------------------------------------------------------
+-- VISTA 5: JPS_V_PARTICIPACION_BIMESTRAL
+-- -------------------------------------------------------
+CREATE OR REPLACE VIEW JPS_V_PARTICIPACION_BIMESTRAL AS
+SELECT
+    m.idMiembro,
+    m.primer_nombre || ' ' || m.primer_apellido AS nombre_miembro,
+    hm.idClub,
+    hm.idClub AS idGrupo_club,
+    -- Bimestre: 1=(ene-feb), 2=(mar-abr), 3=(may-jun),
+    --           4=(jul-ago), 5=(sep-oct), 6=(nov-dic)
+    EXTRACT(YEAR FROM hm.fecha_inicio)            AS anio,
+    CEIL(EXTRACT(MONTH FROM hm.fecha_inicio) / 2) AS bimestre,
+    -- Reuniones totales del grupo en ese bimestre
+    (SELECT COUNT(*)
+     FROM JPS_CALENDARIO_MES_REUNION cmr2
+     JOIN JPS_G_LC glc2 ON cmr2.idGrupo = glc2.idGrupo
+                        AND cmr2.idClub  = glc2.idClub
+     WHERE glc2.idMiembro   = m.idMiembro
+       AND glc2.idClub       = hm.idClub
+       AND cmr2.realizada    = 'si'
+       AND EXTRACT(YEAR FROM cmr2.fecha) = EXTRACT(YEAR FROM hm.fecha_inicio)
+       AND CEIL(EXTRACT(MONTH FROM cmr2.fecha) / 2)      = CEIL(EXTRACT(MONTH FROM hm.fecha_inicio) / 2)
+    ) AS reuniones_bimestre,
+    (SELECT COUNT(*)
+     FROM JPS_INASISTENCIA i2
+     WHERE i2.idMiembro = m.idMiembro
+       AND EXTRACT(YEAR FROM i2.fecha) = EXTRACT(YEAR FROM hm.fecha_inicio)
+       AND CEIL(EXTRACT(MONTH FROM i2.fecha) / 2)        = CEIL(EXTRACT(MONTH FROM hm.fecha_inicio) / 2)
+    ) AS inasistencias_bimestre
+FROM JPS_MIEMBRO             m
+JOIN JPS_HISTORICO_MEMBRESIA hm ON m.idMiembro = hm.idMiembro
+WHERE hm.estatus = 'activo';
